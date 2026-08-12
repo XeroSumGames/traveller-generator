@@ -564,7 +564,10 @@
       A.train(E.availableSkillTables(S)[Math.floor(S.rng.next() * E.availableSkillTables(S).length)].key);
       if (S.sub === 'ejected') { A.afterEject(); flushMuster(); continue; }
       if (S.sub === 'commission') A.commission(S.rng.next() < 0.5);
-      A.another(S.terms.length + 1 < want && !S.mustLeave);
+      // The randomiser always picks a fresh career next time round, so every term here
+      // genuinely ends by LEAVING. Passing true would close the term with no reason
+      // recorded and the printed history would show a blank "Left" for a career change.
+      A.another(false);
       flushMuster();
     }
     flushMuster();
