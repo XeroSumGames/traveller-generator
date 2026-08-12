@@ -71,6 +71,92 @@ HTML = """<!doctype html>
 <script>
 %APP%
 </script>
+<script>
+/* Visit beacon -> log-visit edge function (mirrors lib/events.ts logVisit).
+   This is a static page, so the site-wide VisitLogger never fires here; this
+   sends a page='/traveller-generator' visit. ip_address is captured server-side,
+   geo comes from the geo_* cookies set by middleware, and ip_hash = SHA-256(geo_ip)
+   so it dedups with the rest of the system. Respects the owner opt-out
+   (localStorage tapestry_no_log = '1'). */
+(function () {
+  try {
+    if (localStorage.getItem('tapestry_no_log') === '1') return;
+    var ck = function (n) { var m = document.cookie.match('(^|; )' + n + '=([^;]*)'); return m ? decodeURIComponent(m[2]) : null; };
+    var sid = localStorage.getItem('tapestry_session_id');
+    if (!sid) { sid = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()); localStorage.setItem('tapestry_session_id', sid); }
+    var lat = ck('geo_lat'), lng = ck('geo_lng');
+    var send = function (ipHash) {
+      fetch('https://jbudzglgtxeoaufpejrv.supabase.co/functions/v1/log-visit', {
+        method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: String(sid).slice(0, 64),
+          page: '/traveller-generator',
+          referrer: document.referrer || null,
+          country_code: ck('geo_country'),
+          region: ck('geo_region'),
+          city: ck('geo_city'),
+          latitude: lat ? parseFloat(lat) : null,
+          longitude: lng ? parseFloat(lng) : null,
+          ip_hash: ipHash
+        })
+      }).catch(function () {});
+    };
+    var rawIP = ck('geo_ip');
+    if (rawIP && crypto.subtle) {
+      crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawIP)).then(function (buf) {
+        send(Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join(''));
+      }).catch(function () { send(null); });
+    } else { send(null); }
+  } catch (e) {}
+})();
+</script>
+<!-- Report an issue (Xero Sum Games) -->
+<div class="no-print" style="text-align:center;padding:28px 16px 40px;">
+  <button type="button" id="xsg-ri-open" style="background:#16161a;border:1px solid #3a3a42;color:#e8e5dd;font:600 14px system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:10px 20px;border-radius:9px;cursor:pointer;letter-spacing:.02em;">Report an issue</button>
+</div>
+<div id="xsg-ri-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.66);align-items:center;justify-content:center;padding:16px;">
+  <div role="dialog" aria-modal="true" aria-label="Report an issue" style="background:#16161a;color:#f2efe6;max-width:440px;width:100%;border:1px solid #33333a;border-radius:14px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;">
+    <h3 style="margin:0 0 6px;font-size:19px;">Report an issue</h3>
+    <p style="margin:0 0 14px;color:#a8a49a;font-size:14px;">Spotted a bug or something off? Tell us what happened.</p>
+    <form id="xsg-ri-form">
+      <textarea id="xsg-ri-msg" required rows="4" placeholder="What went wrong?" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #3a3a42;border-radius:9px;background:#0e0e10;color:#f2efe6;font:inherit;font-size:15px;resize:vertical;"></textarea>
+      <input id="xsg-ri-email" type="email" placeholder="Your email (optional - so we can reply with a fix)" style="width:100%;box-sizing:border-box;margin-top:10px;padding:10px;border:1px solid #3a3a42;border-radius:9px;background:#0e0e10;color:#f2efe6;font:inherit;font-size:15px;" />
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button type="button" id="xsg-ri-cancel" style="padding:9px 16px;border:1px solid #3a3a42;border-radius:9px;background:transparent;color:#f2efe6;font:inherit;font-size:14px;cursor:pointer;">Cancel</button>
+        <button type="submit" id="xsg-ri-send" style="padding:9px 18px;border:none;border-radius:9px;background:#c8a06a;color:#14130f;font:inherit;font-size:14px;font-weight:700;cursor:pointer;">Send report</button>
+      </div>
+      <p id="xsg-ri-status" style="margin:12px 0 0;font-size:14px;min-height:1em;"></p>
+    </form>
+  </div>
+</div>
+<script>
+(function(){
+  var SOURCE='traveller-generator';
+  var EP='https://jbudzglgtxeoaufpejrv.supabase.co/functions/v1/report-issue';
+  var $=function(id){return document.getElementById(id);};
+  var modal=$('xsg-ri-modal'),form=$('xsg-ri-form'),msg=$('xsg-ri-msg'),email=$('xsg-ri-email'),status=$('xsg-ri-status'),send=$('xsg-ri-send');
+  function show(){modal.style.display='flex';setTimeout(function(){msg.focus();},40);}
+  function hide(){modal.style.display='none';}
+  $('xsg-ri-open').addEventListener('click',show);
+  $('xsg-ri-cancel').addEventListener('click',hide);
+  modal.addEventListener('click',function(e){if(e.target===modal)hide();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.style.display!=='none')hide();});
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    var m=msg.value.trim();if(!m)return;
+    send.disabled=true;status.style.color='#a8a49a';status.textContent='Sending...';
+    fetch(EP,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:SOURCE,message:m,email:(email.value.trim()||null),page_url:location.href})})
+      .then(function(r){return r.json().catch(function(){return null;});})
+      .then(function(d){
+        if(d&&d.ok){status.style.color='#7fc458';status.textContent='Thanks - report sent!';form.reset();setTimeout(hide,1400);}
+        else if(d&&d.error==='invalid_email'){status.style.color='#e07a5f';status.textContent='That email looks off - fix it or leave it blank.';}
+        else{status.style.color='#e07a5f';status.textContent='Something went wrong. Please try again.';}
+      })
+      .catch(function(){status.style.color='#e07a5f';status.textContent='Something went wrong. Please try again.';})
+      .finally(function(){send.disabled=false;});
+  });
+})();
+</script>
 </body></html>
 """
 
