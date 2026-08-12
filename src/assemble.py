@@ -25,6 +25,7 @@ DATA = {
     'loop': jload(os.path.join(D, 'term-loop.json')),
     'muster': jload(os.path.join(D, 'mustering-out.json')),
     'packages': jload(os.path.join(D, 'benefits-and-packages.json')),
+    'names': jload(os.path.join(D, 'names.json'))['names'],
     'careers': careers,
 }
 

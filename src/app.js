@@ -87,7 +87,8 @@
     return '<div class="step-h">Background</div>' +
       '<div class="step-p">Choose <b>' + n + '</b> background skills &mdash; that is your EDU DM + 3 &mdash; each at level 0. These represent what you picked up growing up.</div>' +
       '<div class="panel"><div class="grid2">' +
-      '<div><label class="lbl">Name</label><input class="txt" value="' + esc(S.name) + '" oninput="A.set(\'name\',this.value)" placeholder="Your Traveller"></div>' +
+      '<div><label class="lbl">Name</label><input class="txt name-inp" value="' + esc(S.name) + '" oninput="A.set(\'name\',this.value)" placeholder="Your Traveller">' +
+      '<button class="btn ghost btn-rand" type="button" onclick="A.randName()">&#9860; Random name</button></div>' +
       '<div><label class="lbl">Homeworld</label><input class="txt" value="' + esc(S.homeworld) + '" oninput="A.set(\'homeworld\',this.value)" placeholder="Optional"></div>' +
       '</div></div>' +
       '<div class="panel"><div class="panel-t">Background skills &mdash; ' + S.bgPicked.length + ' / ' + n + '</div>' +
@@ -328,6 +329,19 @@
   // ---------------- actions ----------------
   var A = {};
   A.set = function (k, v) { S[k] = v; };
+  // Two picks joined, so the sheet gets a full name. The pool is single given names
+  // (it comes from walkingdead-rpg, where characters carry one name).
+  function rollName() {
+    var N = DATA.names;
+    var a = N[Math.floor(S.rng.next() * N.length)], b = a;
+    for (var i = 0; i < 8 && b === a; i++) b = N[Math.floor(S.rng.next() * N.length)];
+    return a + ' ' + b;
+  }
+  A.randName = function () {
+    S.name = rollName();
+    var el = document.querySelector('.name-inp');
+    if (el) el.value = S.name;   // write straight to the input: no re-render, so the
+  };                             // homeworld field keeps whatever the user was typing
   A.reroll = function () { E.rollCharacteristics(S); S.bgPicked = []; render(); };
   A.go = function (p) {
     if (p === 'terms' && !S.sub) S.sub = 'pick';
@@ -550,7 +564,7 @@
       var p = pool.splice(Math.floor(S.rng.next() * pool.length), 1)[0];
       S.bgPicked.push(p); S.skills[p] = 0;
     }
-    S.name = 'Traveller';
+    S.name = rollName();
     // play 2-4 terms automatically
     var want = 2 + Math.floor(S.rng.next() * 3);
     var guard = 0;

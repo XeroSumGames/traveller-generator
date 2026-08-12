@@ -4,7 +4,9 @@
    solid RANDOMISE right, 3px accent underline. */
 :root{
   --void:#0e0e10; --panel:#f4f2ec; --surface:#fffdf7; --card:#eceadf; --card-ho:#e3e0d2;
-  --ink:#14130f; --dim:#8d897c; --dust:#6b6759; --steel:#4a4740; --moon:#1a1915;
+  /* --dust is the secondary-text token (event and mishap text, step blurbs, option
+     descriptions, notes). Darkened from #6b6759 for legibility on the light panels. */
+  --ink:#14130f; --dim:#767263; --dust:#55524a; --steel:#3d3a34; --moon:#1a1915;
   --rust:#b8442a; --amber:#c8802a; --line:#cdc9ba; --accent:#b8442a; --accent-dim:#e0c8bf;
   --ff-d:Georgia,'Times New Roman',serif;
   --ff-b:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
@@ -13,7 +15,8 @@
 }
 :root[data-theme="dark"]{
   --void:#000; --panel:#16161a; --surface:#1d1d22; --card:#232329; --card-ho:#2c2c33;
-  --ink:#f2efe6; --dim:#5a5750; --dust:#8f8b7e; --steel:#a8a49a; --moon:#f2efe6;
+  /* same token, brightened for the dark panels */
+  --ink:#f2efe6; --dim:#7d7a70; --dust:#b6b1a4; --steel:#cdc8ba; --moon:#f2efe6;
   --rust:#e2603f; --amber:#e0a049; --line:#33333a; --accent:#e2603f; --accent-dim:#5a2c20;
 }
 *{box-sizing:border-box}
@@ -73,6 +76,7 @@ body{margin:0;background:var(--panel);color:var(--ink);font-family:var(--ff-b);f
 .btn:disabled{opacity:.35;cursor:not-allowed}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--dust)}
 .btn.ghost:hover{border-color:var(--accent);color:var(--ink)}
+.btn-rand{margin-top:8px;padding:7px 14px;font-size:11px}
 .btn-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:22px}
 
 /* term loop */
