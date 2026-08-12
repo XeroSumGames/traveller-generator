@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Traveller -- Character Generator</title>
+<meta name="description" content="An unofficial character generator for Mongoose Traveller 2nd Edition.">
+<style>
+/* Traveller generator -- palette + layout.
+   Uniform title bar spec shared with the other four Xero Sum Games generators:
+   back-to-Table strip on top, LIGHT/DARK pill left, centred ~30px title,
+   solid RANDOMISE right, 3px accent underline. */
+:root{
+  --void:#0e0e10; --panel:#f4f2ec; --surface:#fffdf7; --card:#eceadf; --card-ho:#e3e0d2;
+  --ink:#14130f; --dim:#8d897c; --dust:#6b6759; --steel:#4a4740; --moon:#1a1915;
+  --rust:#b8442a; --amber:#c8802a; --line:#cdc9ba; --accent:#b8442a; --accent-dim:#e0c8bf;
+  --ff-d:Georgia,'Times New Roman',serif;
+  --ff-b:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --ff-m:'Courier New',Courier,monospace;
+  --r:3px; --tr:.15s ease;
+}
+:root[data-theme="dark"]{
+  --void:#000; --panel:#16161a; --surface:#1d1d22; --card:#232329; --card-ho:#2c2c33;
+  --ink:#f2efe6; --dim:#5a5750; --dust:#8f8b7e; --steel:#a8a49a; --moon:#f2efe6;
+  --rust:#e2603f; --amber:#e0a049; --line:#33333a; --accent:#e2603f; --accent-dim:#5a2c20;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--panel);color:var(--ink);font-family:var(--ff-b);font-size:15px;line-height:1.5}
+
+.backbar{display:block;background:#0e0e10;color:#e8e5dd;font:600 14px var(--ff-b);text-decoration:none;padding:9px 14px;border-bottom:1px solid #2a2a30}
+.backbar:hover{color:#fff}
+
+.hdr{position:relative;background:var(--surface);border-bottom:3px solid var(--accent);padding:14px 18px;text-align:center}
+.hdr-title{font-family:var(--ff-d);font-size:30px;font-weight:700;letter-spacing:.02em;color:var(--ink);pointer-events:none}
+.hdr-sub{font-family:var(--ff-m);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--dust);pointer-events:none;margin-top:2px}
+.theme-toggle{position:absolute;left:18px;top:50%;transform:translateY(-50%);display:inline-flex;border:1px solid var(--line);border-radius:20px;overflow:hidden;z-index:5}
+.tt-btn{background:transparent;border:0;color:var(--dust);font-family:var(--ff-m);font-size:11px;letter-spacing:.1em;padding:5px 12px;cursor:pointer}
+.tt-btn.active{background:var(--accent);color:#fff;font-weight:700}
+.hdr-rand{position:absolute;right:18px;top:50%;transform:translateY(-50%);background:var(--accent);border:0;border-radius:var(--r);color:#fff;font-family:var(--ff-m);font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:9px 16px;cursor:pointer;z-index:5}
+.hdr-rand:hover{background:var(--amber)}
+@media(max-width:720px){.theme-toggle,.hdr-rand{position:static;transform:none;display:inline-flex;margin:12px 6px 0}}
+
+.main{max-width:1000px;margin:0 auto;padding:20px 18px 60px}
+
+.track{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.track-item{font-family:var(--ff-m);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:5px 10px;border:1px solid var(--line);border-radius:var(--r)}
+.track-item.done{color:var(--dust);border-color:var(--accent-dim)}
+.track-item.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+
+.step-h{font-family:var(--ff-d);font-size:23px;margin:0 0 4px}
+.step-p{color:var(--dust);font-size:14px;margin:0 0 18px;max-width:70ch}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.panel-t{font-family:var(--ff-m);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+
+.chars{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:720px){.chars{grid-template-columns:repeat(3,1fr)}}
+.ch{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 6px;text-align:center}
+.ch-k{font-family:var(--ff-m);font-size:11px;letter-spacing:.1em;color:var(--dust)}
+.ch-v{font-family:var(--ff-m);font-size:26px;font-weight:700;color:var(--ink);line-height:1.1}
+.ch-dm{font-family:var(--ff-m);font-size:12px;color:var(--amber)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+
+.opt{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid transparent;border-radius:var(--r);cursor:pointer}
+.opt:hover{background:var(--card)}
+.opt.on{background:var(--card);border-color:var(--accent-dim)}
+.opt.disabled{opacity:.4;cursor:not-allowed}
+.opt-box{width:16px;height:16px;border:1px solid var(--line);border-radius:2px;flex:0 0 auto;margin-top:3px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.opt.on .opt-box{background:var(--accent);border-color:var(--accent)}
+.opt-n{font-size:14px}
+.opt-d{font-size:12px;color:var(--dust);line-height:1.35}
+
+.txt,.sel{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);color:var(--ink);font-family:var(--ff-b);font-size:14px;padding:8px 10px;outline:none}
+.txt:focus,.sel:focus{border-color:var(--accent)}
+.lbl{display:block;font-family:var(--ff-m);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dust);margin:0 0 5px}
+
+.btn{background:var(--accent);border:0;border-radius:var(--r);color:#fff;font-family:var(--ff-m);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:11px 22px;cursor:pointer}
+.btn:hover:not(:disabled){background:var(--amber)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--dust)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--ink)}
+.btn-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:22px}
+
+/* term loop */
+.roll{display:flex;align-items:baseline;gap:10px;font-family:var(--ff-m);font-size:13px;padding:8px 11px;border-left:3px solid var(--line);background:var(--card);border-radius:0 var(--r) var(--r) 0;margin-bottom:8px}
+.roll.good{border-left-color:#3f7d4a}
+.roll.bad{border-left-color:var(--rust)}
+.roll-v{font-size:17px;font-weight:700}
+.roll-t{color:var(--dust);flex:1}
+.term-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:11px}
+.term-n{font-family:var(--ff-d);font-size:19px}
+.term-age{font-family:var(--ff-m);font-size:12px;color:var(--dust)}
+.hist{margin-bottom:16px}
+.hist-row{display:flex;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+.hist-t{font-family:var(--ff-m);color:var(--dust);flex:0 0 62px}
+.hist-c{flex:1}
+.hist-r{font-family:var(--ff-m);color:var(--dust);font-size:12px}
+
+.skills-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 14px}
+.sk{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0;border-bottom:1px dotted var(--line)}
+.sk-v{font-family:var(--ff-m);color:var(--amber);font-weight:700}
+
+.note{font-size:12px;color:var(--dust);line-height:1.45;background:var(--card);border-left:3px solid var(--accent-dim);padding:8px 11px;border-radius:0 var(--r) var(--r) 0;margin:10px 0}
+
+/* ---- printed sheet: a CSS recreation, no publisher artwork ---- */
+#printsheet{display:none}
+.ps{width:8.5in;min-height:11in;background:#fff;color:#000;padding:.4in;font-family:Arial,Helvetica,sans-serif;font-size:9.5pt}
+.ps-band{background:#000;color:#fff;font-weight:700;letter-spacing:.08em;font-size:9pt;padding:3px 7px;text-transform:uppercase}
+.ps-box{border:1.5px solid #000;border-radius:9px;padding:8px 10px;margin-bottom:8px}
+.ps-top{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+.ps-title{font-family:Georgia,serif;font-size:26pt;font-weight:700;font-style:italic;letter-spacing:-.01em;flex:1}
+.ps-sub{font-size:7.5pt;letter-spacing:.24em;text-align:right}
+.ps-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ps-f{display:flex;gap:6px;align-items:baseline;padding:2px 0}
+.ps-fl{font-weight:700;font-size:8pt;min-width:78px}
+.ps-fv{flex:1;border-bottom:1px solid #999;min-height:14px}
+.ps-ch{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.ps-ch div.k{font-weight:700;font-size:8pt;border-bottom:1px solid #000}
+.ps-ch div.v{font-size:15pt;font-weight:700;padding:2px 0}
+.ps-ch div.d{font-size:7.5pt;color:#444}
+.ps-sk{columns:4;column-gap:14px;font-size:8pt}
+.ps-sk div{break-inside:avoid;display:flex;justify-content:space-between;border-bottom:1px dotted #bbb;padding:1px 0}
+.ps-hist{font-size:8pt;width:100%;border-collapse:collapse}
+.ps-hist th,.ps-hist td{border-bottom:1px solid #ccc;text-align:left;padding:2px 4px}
+.ps-hist th{border-bottom:1.5px solid #000;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em}
+.ps-foot{font-size:7pt;color:#333;font-style:italic;text-align:center;margin-top:10px}
+
+@media print{
+  @page{size:letter;margin:0}
+  html,body{background:#fff}
+  .hdr,.track,.footer,.backbar,.no-print,#xsg-ri-open,#xsg-ri-modal{display:none!important}
+  /* #printsheet is a child of #main, so hide #main's OTHER children rather than #main
+     itself -- display:block on a descendant of a display:none parent prints nothing. */
+  #main>*:not(#printsheet){display:none!important}
+  .main{max-width:none;margin:0;padding:0}
+  #printsheet{display:block!important}
+  .ps{width:auto;min-height:0;padding:.35in}
+}
+
+</style>
+<script>/* apply saved theme before paint to avoid a flash */(function(){try{if(localStorage.getItem('traveller_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+</head><body>
+<a class="backbar no-print" href="https://thetable.xerosumgames.com/">&larr; The Table</a>
+<div class="hdr">
+  <div class="theme-toggle" role="group" aria-label="Colour theme">
+    <button class="tt-btn" data-tv="light" onclick="setTheme('light')">Light</button>
+    <button class="tt-btn" data-tv="dark" onclick="setTheme('dark')">Dark</button>
+  </div>
+  <div class="hdr-title">Traveller</div>
+  <div class="hdr-sub">Character Generator &middot; Mongoose 2nd Edition</div>
+  <button class="hdr-rand no-print" type="button" onclick="A.randomise()">&#9860; Randomise</button>
+</div>
+<div class="main">
+  <div class="track" id="track"></div>
+  <div id="main"></div>
+</div>
+<div class="footer no-print" style="text-align:center;padding:26px 16px;font-size:12px;color:#8d897c;line-height:1.6">
+  <b>Traveller -- Character Generator.</b> An unofficial fan tool.<br>
+  Traveller is a registered trade mark of Mongoose Publishing Ltd. Traveller (c)2024 Mongoose Publishing Ltd.
+  This is an unofficial, fan-made character generator, not affiliated with or endorsed by the rights holders.
+  All game rules and content remain the property of their respective owners.
+</div>
+<script>var DATA={"core":{"_source":"Mongoose Traveller 2nd Edition, Core Rulebook Update 2022 -- 'Char Gen & Skills' extract. PDF page = printed page - 7.","_scope":"Rules mechanics only (target numbers, tables, procedure). Transcribed for a character generator; no rulebook prose is reproduced beyond the short table entries needed to run the roll.","_transcribed":"2026-08-11","characteristics":{"roll":"2D each, assign in any order (or in order as rolled), starting with STR","order":["STR","DEX","END","INT","EDU","SOC"],"names":{"STR":"Strength","DEX":"Dexterity","END":"Endurance","INT":"Intellect","EDU":"Education","SOC":"Social Standing","PSI":"Psi"},"psi":"not rolled during normal creation (see the Psion career, printed p236)","max_unaugmented":15,"dm_table":[{"min":0,"max":0,"dm":-3},{"min":1,"max":2,"dm":-2},{"min":3,"max":5,"dm":-1},{"min":6,"max":8,"dm":0},{"min":9,"max":11,"dm":1},{"min":12,"max":14,"dm":2},{"min":15,"max":999,"dm":3}]},"background_skills":{"count":"EDU DM + 3 (range 0-6)","_warning":"The official Character Generation Flowchart says '(EDU + 3)'. The rulebook text (printed p9) says EDU DM + 3. The BOOK is authoritative -- do not follow the flowchart here.","level":0,"list":["Admin","Animals","Art","Athletics","Carouse","Drive","Electronics","Flyer","Language","Mechanic","Medic","Profession","Science","Seafarer","Streetwise","Survival","Vacc Suit"]},"starting_age":18,"term_length_years":4,"_term_note":"A term is always 4 years, even if survival is failed or the Traveller is forced out.","roll_convention":"2D + characteristic DM vs target. 'INT 8+' = roll 2D, add INT DM, succeed on 8+. Skill checks add skill level instead. No other modifiers apply during creation.","skill_limits":{"max_level_during_creation":4,"_max_note":"Further increases above 4 are lost during creation.","total_cap":"3 x (INT DM + EDU DM)","_total_cap_source":"flowchart wording is '3 x (INT + EDU)'; VERIFY against printed p16-18 before implementing"},"pre_career_education":{"when":"usually term 1 in place of a career; may be delayed to term 2 or 3; NOT available from term 4 onward","attempts":"one attempt at one pre-career option per term","on_entry_failure":"must immediately attempt entry to a career; failing that, be drafted as normal","on_success":"gain the listed skills and roll on the Pre-Career Events table","no_mustering_out":true,"on_graduation_failure":"no benefits, but skills earned during the time are kept","university":{"entry":"EDU 6+","entry_dms":[{"when":"attempted in term two","dm":-1},{"when":"attempted in term three","dm":-2},{"when":"SOC 9 or higher","dm":1}],"skills":"choose one skill at level 0 and one at level 1 from the list below","skill_list":["Admin","Advocate","Animals (Training or Veterinary)","Art (any)","Astrogation","Electronics (any)","Engineer (any)","Language (any)","Medic","Navigation","Profession (any)","Science (any)"],"edu_bonus_on_entry":1,"graduation":"INT 6+","honours":"10+","graduation_benefits":["both chosen skills increase by one level","EDU increases by a further +1","DM+1 (DM+2 with honours) to qualify for: Agent, Army, Citizen (Corporate), Entertainer (Journalist), Marines, Navy, Scholar, Scouts","may take a commission roll before the first term of a military career at DM+2, so long as that is the first career chosen after university; success enters at officer rank 1; graduating with honours passes this roll automatically"]},"military_academy":{"choose":["Army","Marines","Navy"],"entry":{"Army":"END 7+","Marines":"END 8+","Navy":"INT 8+"},"entry_dms":[{"when":"attempted in term two","dm":-2},{"when":"attempted in term three","dm":-4}],"skills":"all Service Skills of the tied career at level 0, as with basic training","graduation":"INT 7+","honours":"11+","graduation_dms":[{"when":"END 8 or higher","dm":1},{"when":"SOC 8 or higher","dm":1}],"graduation_benefits":["if entering the tied military career, select any three Service Skills and increase them to level 1","EDU +1","with honours, SOC +1 as well","automatic entry into the tied military career, so long as it is the first career attempted after graduation"],"on_graduation_failure":"may still automatically enter the tied military career unless the graduation roll was 2 or less; if entering this way, no commission roll may be made in the first term"},"events_note":"Roll on the Pre-Career Events table for any term spent in pre-career education. If drafted through an event, enter the new career next term but do not graduate; a Traveller can be drafted more than once.","pre_career_events":[{"roll":2,"text":"Approached by an underground (and highly illegal) psionic group who sense potential in you. You may test your PSI and attempt to enter the Psion career in any subsequent term."},{"roll":3,"text":"Your time in education is not a happy one and you suffer a deep tragedy. You crash and fail to graduate."},{"roll":4,"text":"A supposedly harmless prank goes wrong and someone gets hurt. Roll SOC 8+. Success: gain a Rival. Failure: gain an Enemy. On a roll of 2, you fail to graduate and must take the Prisoner career in your next term."},{"roll":5,"text":"Taking advantage of youth, you party as much as you study. Gain Carouse 1."},{"roll":6,"text":"You become involved in a tightly knit clique and make a pact to remain friends forever. Gain D3 Allies."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You join a political movement. Roll SOC 8+. If successful you become a leading figure: gain one Ally within the movement but one Enemy in wider society."},{"roll":9,"text":"You develop a healthy interest in a hobby or other area of study. Gain any skill of your choice except Jack-of-all-Trades at level 0."},{"roll":10,"text":"A newly arrived tutor rubs you up the wrong way. Roll 9+ on any skill learned during this term. Success: gain a level in that skill and the tutor as a Rival."},{"roll":11,"text":"War comes and a wide-ranging draft is instigated. Either flee and join the Drifter career next term, or be drafted (roll 1D: 1-3 Army, 4-5 Marine, 6 Navy). Either way you do not graduate this term. However, on SOC 9+ you avoid the draft and may attempt graduation normally."},{"roll":12,"text":"You gain wide-ranging recognition of your initiative and innovative approach to study. Increase SOC by +1."}]},"draft_table":[{"roll":1,"career":"Navy","assignment":"any"},{"roll":2,"career":"Army","assignment":"any"},{"roll":3,"career":"Marine","assignment":"any"},{"roll":4,"career":"Merchant","assignment":"Merchant Marine"},{"roll":5,"career":"Scout","assignment":"any"},{"roll":6,"career":"Agent","assignment":"Law Enforcement"}],"careers_summary":{"_source":"Career Summary Table, printed p21 (pdf 14)","_shape":"qualification is the career-level entry roll; survival and advancement are per-assignment","Agent":{"qualification":"INT 6+","page":22,"assignments":{"Law Enforcement":{"survival":"END 6+","advancement":"INT 6+"},"Intelligence":{"survival":"INT 7+","advancement":"INT 5+"},"Corporate":{"survival":"INT 5+","advancement":"INT 7+"}}},"Army":{"qualification":"END 5+","page":24,"assignments":{"Support":{"survival":"END 5+","advancement":"EDU 7+"},"Infantry":{"survival":"STR 6+","advancement":"EDU 6+"},"Cavalry":{"survival":"DEX 7+","advancement":"INT 5+"}}},"Citizen":{"qualification":"EDU 5+","page":26,"assignments":{"Corporate":{"survival":"SOC 6+","advancement":"INT 6+"},"Worker":{"survival":"END 4+","advancement":"EDU 8+"},"Colonist":{"survival":"INT 7+","advancement":"END 5+"}}},"Drifter":{"qualification":"Automatic","page":28,"assignments":{"Barbarian":{"survival":"END 7+","advancement":"STR 7+"},"Wanderer":{"survival":"END 7+","advancement":"INT 7+"},"Scavenger":{"survival":"DEX 7+","advancement":"END 7+"}}},"Entertainer":{"qualification":"DEX or INT 5+","page":30,"assignments":{"Artist":{"survival":"SOC 6+","advancement":"INT 6+"},"Journalist":{"survival":"EDU 7+","advancement":"INT 5+"},"Performer":{"survival":"INT 5+","advancement":"DEX 7+"}}},"Marine":{"qualification":"END 6+","page":32,"assignments":{"Support":{"survival":"END 5+","advancement":"EDU 7+"},"Star Marine":{"survival":"END 6+","advancement":"EDU 6+"},"Ground Assault":{"survival":"END 7+","advancement":"EDU 5+"}}},"Merchant":{"qualification":"INT 4+","page":34,"assignments":{"Merchant Marine":{"survival":"EDU 5+","advancement":"INT 7+"},"Free Trader":{"survival":"DEX 6+","advancement":"INT 6+"},"Broker":{"survival":"EDU 5+","advancement":"INT 7+"}}},"Navy":{"qualification":"INT 6+","page":36,"assignments":{"Line/Crew":{"survival":"INT 5+","advancement":"EDU 7+"},"Engineer/Gunner":{"survival":"INT 6+","advancement":"EDU 6+"},"Flight":{"survival":"DEX 7+","advancement":"EDU 5+"}}},"Noble":{"qualification":"SOC 10+","page":38,"assignments":{"Administrator":{"survival":"INT 4+","advancement":"EDU 6+"},"Diplomat":{"survival":"INT 5+","advancement":"SOC 7+"},"Dilettante":{"survival":"SOC 5+","advancement":"INT 7+"}}},"Rogue":{"qualification":"DEX 6+","page":40,"assignments":{"Thief":{"survival":"INT 6+","advancement":"DEX 6+"},"Enforcer":{"survival":"END 6+","advancement":"STR 6+"},"Pirate":{"survival":"DEX 6+","advancement":"INT 6+"}}},"Scholar":{"qualification":"INT 6+","page":42,"assignments":{"Field Researcher":{"survival":"END 6+","advancement":"INT 6+"},"Scientist":{"survival":"EDU 4+","advancement":"INT 8+"},"Physician":{"survival":"EDU 4+","advancement":"EDU 8+"}}},"Scout":{"qualification":"INT 5+","page":44,"assignments":{"Courier":{"survival":"END 5+","advancement":"EDU 9+"},"Surveyor":{"survival":"END 6+","advancement":"INT 8+"},"Explorer":{"survival":"END 7+","advancement":"EDU 7+"}}}},"_todo":["printed p18-20 (pdf 11-13): qualification DMs, basic training, skill tables, survival/mishap, events, commission, advancement, ageing","printed p22-45 (pdf 15-38): per-career skill tables, ranks, mishaps, events","printed p44-47: mustering out benefits, cash table, pension and debts","printed p48+: skill packages","confirm the total skill-level cap wording against the book"]},"loop":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp14-15 (the book's own 'Creating a Traveller' flowchart) and pp18-20. PDF page = printed page - 7.","_authority":"Where the standalone 'MGT2 Character Generation Flowchart' Game Aid disagrees with the book, THE BOOK WINS. Two confirmed disagreements: (1) the Game Aid says background skills = 'EDU + 3'; the book says EDU DM + 3, twice. (2) the Game Aid puts the skill roll after qualification/basic-training as a separate node and survival before the event; the book's own flowchart folds the skill roll into 'Start New Term'.","loop_order":["characteristics","background (EDU DM+3 skills, choose homeworld)","pre-career education (optional; terms 1-3 only)","START NEW TERM: choose career, roll qualification; on failure take the draft or Drifter. First term in a career -> basic training; otherwise choose one skill table and roll 1D.","SURVIVAL: roll; on failure roll a Mishap and leave the career unless the mishap says otherwise, in which case return to Start New Term.","EVENT: roll on the career Events table. Optionally connect to another Traveller.","ADVANCEMENT: if a commission is possible and wanted (Army/Navy/Marines, first term or SOC 9+), roll it; then roll advancement.","CONTINUE?: age +4 years. Continue creation? Same career -> back to Start New Term. Different career -> muster out first. Roll for ageing if required.","MUSTERING OUT: benefits and cash. On the FINAL muster out, resolve pension and medical debt.","SKILL PACKAGE","done"],"qualification":{"on_failure":"cannot enter the chosen career this term; must either submit to the draft or take the Drifter career for this term","leaving_lockout":"if you leave a career you cannot return to it the next term","exceptions":["the draft can put you back into a career you were previously ejected from","the Drifter career is always open","see Changing Assignments"]},"basic_training":{"first_career":"gain ALL skills on the Service Skills table at level 0","later_careers":"pick any ONE skill from the Service Skills table at level 0","exception":"Citizen and Drifter use their appropriate Assignment Skills table for basic training instead"},"skill_tables":{"tables":["Personal Development","Service Skills","Assignment Skills (one sub-table per assignment)","Officer","Advanced Education"],"each_term":"pick one table and roll 1D","restricted":"Advanced Education and Officer/Commissioned tables may only be rolled on if the listed requirement is met (usually EDU 8+, or a given rank)","resolution":{"no_level_listed":"gain the skill at level 1 if untrained, otherwise increase it by +1","level_listed":"gain the skill at that level only if it is higher than your current level"}},"skill_limits":{"max_level_during_creation":4,"overflow":"increases beyond level 4 are lost","total_cap":"total skill levels may never exceed three times combined INT and EDU","_cap_note":"The book's wording is 'three times their combined INT and EDU' -- the raw characteristic scores, not the DMs. Read literally this is rarely binding (INT 7 + EDU 7 = cap 42). Implemented literally; surfaced in the UI only if it ever actually binds."},"survival":{"on_failure":"immediately roll on the career's Mishap table; the mishap forces you to leave the career unless it states otherwise; you also lose the Benefit roll for the current term","natural_2":"always a failure"},"commission":{"careers":["Army","Navy","Marine"],"optional":true,"when":"first term only, unless SOC 9+, in which case any term","dm":"DM-1 for every term after the first","event_dms_apply":"bonus DMs from events that apply to advancement also apply to commission rolls","on_success":"become a rank 1 officer and progress on the officer rank table from then on","same_term_advancement":"if you gain a commission you may NOT roll advancement in the same term; if you FAIL the commission roll you may still roll advancement"},"advancement":{"start_rank":0,"once_per_term":true,"on_success":"move to the next rank, gain an EXTRA roll on any of the career's skill tables, and gain any bonuses listed for the new rank","forced_out":"if the advancement roll is equal to or LESS THAN the number of terms already spent in this career, you cannot continue in this career after this term","natural_12":"you must continue in this career -- you are too valuable to lose"},"ranks":{"start":0,"bonuses":"some ranks grant bonuses such as extra skills; these are acquired immediately on attaining the rank"},"draft":{"once_per_lifetime":"a Traveller may only enter the draft once in their lifetime unless otherwise stated","table":[{"roll":1,"career":"Navy","assignment":"any"},{"roll":2,"career":"Army","assignment":"any"},{"roll":3,"career":"Marine","assignment":"any"},{"roll":4,"career":"Merchant","assignment":"Merchant Marine"},{"roll":5,"career":"Scout","assignment":"any"},{"roll":6,"career":"Agent","assignment":"Law Enforcement"}]},"changing_careers":{"how":"make the new career's qualification roll at the start of a new term","on_failure":"submit to the draft (if not already drafted in this lifetime) or become a Drifter"},"changing_assignments":{"simple":{"careers":["Army","Marine","Navy","Noble","Rogue","Scholar","Scout"],"how":"a qualification roll only","on_failure":"continue in the career with the same assignment, no penalty","on_success":"adopt the new assignment and continue in the career, RETAINING RANK"},"treated_as_new_career":{"careers":["Agent","Citizen","Entertainer","Merchant"],"requires":"must have left the career voluntarily -- a Traveller ejected from a career cannot change assignment","how":"Benefit rolls are made as normal, then a qualification roll to enter the new assignment","on_failure":"must enter the draft or become a Drifter","on_success":"the career begins afresh with the new assignment at RANK 0"}},"connections_rule":{"_note":"A group rule. In a single-character generator this is an optional extra step, not part of the main flow.","max_free_skills":2,"constraint":"each connection must be with a different Traveller; any skill may be chosen, but it cannot be raised above level 3 this way, and Jack-of-all-Trades may not be taken"},"associates":{"categories":["Contact","Ally","Rival","Enemy"],"_note":"Gained from events; tracked on the sheet. Other Travellers may be Contacts, Allies or Rivals, which qualifies for the connections rule."},"_still_to_transcribe":["ageing rules (printed p48)","mustering out: benefits tables per career, cash table, pension and medical debt (printed p46-48)","skill packages (printed p50)","per-career data: skill tables, ranks, mishaps, events (printed p22-45 = pdf 15-38)"]},"muster":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp46, 48, 49. PDF page = printed page - 7.","benefits":{"when":"gained when a Traveller leaves a career, for any reason","rolls":"one Benefit roll per FULL term served in that career, plus extra rolls for high rank","lost_roll":"a failed Survival roll costs the Benefit roll for that term","columns":["Cash","Other Benefits"],"cash_column_limit":3,"_cash_limit_note":"maximum three Cash-column rolls across ALL careers, for the whole Traveller","gambler_dm":"a Traveller with the Gambler skill gains DM+1 to all Cash column rolls","benefits_of_rank":[{"highest_rank":"1-2","bonus_rolls":1},{"highest_rank":"3-4","bonus_rolls":2},{"highest_rank":"5-6","bonus_rolls":3,"extra":"DM+1 to all Benefit rolls from this career"}],"leftover_cash":"may purchase personal equipment worth up to Cr10000 before play begins; leftover money can be converted to cash, trade goods or simply saved","_equipment_conflict":"The standalone Character Generation Flowchart game aid says 'spend up to Cr 2,000'. The book (printed p46) says Cr10000. THE BOOK WINS -- this is the third recorded disagreement between that game aid and the rulebook.","ship_shares":{"meaning":"contacts, credit rating, savings and favours worth roughly one millionth of a space vessel each; pooled toward ownership","not_cash":"Ship Shares cannot be traded or redeemed for cash","if_unused":"if not used to help purchase a ship, each unused Ship Share instead yields an additional pension of Cr1000 per year"},"tas_membership":{"once_only":"membership may only be received once per Traveller","duplicate":"rolling this Benefit again yields two Ship Shares instead","dividend":"one high passage every two months, which may be used, retained or sold"},"yacht":{"first":"a yacht with 25% of the mortgage paid off; roll 1D on the Spacecraft Quirks table","duplicate":"each further roll pays off another 25%; four times clears the mortgage entirely","alternative":"a Safari Ship may be selected instead"},"ships_rule":"for simplicity and balance only one Traveller may begin play in possession of a ship; each other Traveller who rolled a ship receives an additional pension of Cr25000 per year instead, representing part ownership"},"pensions":{"eligibility":"leaving a career after at least FIVE terms in it counts as retirement and earns a pension","excluded_careers":["Scout","Rogue","Prisoner","Drifter"],"payment":"paid at the beginning of each year, effective on leaving the service, collectible at any Class A or B starport","table":[{"terms":5,"pay":10000},{"terms":6,"pay":12000},{"terms":7,"pay":14000},{"terms":8,"pay":16000}],"beyond_8":"Cr2000 per term beyond 8, i.e. 16000 + 2000 * (terms - 8)"},"ageing":{"begins_at_age":34,"begins_after_term":4,"when":"at the end of the fourth term and at the end of every term thereafter","roll":"2D minus the Traveller's TOTAL number of terms","player_choice":"the Traveller chooses which characteristics are affected","table":[{"result":"-6","effect":"reduce three physical characteristics by 2, and one mental characteristic by 1"},{"result":"-5","effect":"reduce three physical characteristics by 2"},{"result":"-4","effect":"reduce two physical characteristics by 2, and one physical characteristic by 1"},{"result":"-3","effect":"reduce one physical characteristic by 2, and two physical characteristics by 1"},{"result":"-2","effect":"reduce three physical characteristics by 1"},{"result":"-1","effect":"reduce two physical characteristics by 1"},{"result":"0","effect":"reduce one physical characteristic by 1"},{"result":"1+","effect":"no effect"}],"_physical":["STR","DEX","END"],"_mental":["INT","EDU","SOC"],"ageing_crisis":{"trigger":"any characteristic reduced to 0","outcome":"the Traveller dies unless they pay 1D x Cr10000 for medical care, which restores any such characteristics to 1","aftermath":"the Traveller automatically fails all qualification rolls from then on"}},"anagathics":{"start":"at the start of any career term, roll SOC 10+ to begin taking anagathics","fumble":"a roll of exactly 2 sends the Traveller straight to the Prisoner career for that term","effect":"while using them the Traveller effectively does not age -- add the number of terms since starting anagathics as a POSITIVE DM to Ageing rolls","stopping":"if the Traveller stops for any reason they must roll immediately on the Ageing table","drawback_survival":"must make TWO Survival checks each term instead of one; if either or both fail, the Traveller suffers a Mishap","drawback_cost":"1D x Cr25000 per term, paid out of eventual cash benefits; if unpayable the Traveller goes into debt"},"injuries":{"when":"Travellers wounded in combat or accidents during creation roll on the Injury table","table":[{"roll":1,"name":"Nearly killed","effect":"reduce one physical characteristic by 1D and two other physical characteristics by 2"},{"roll":2,"name":"Severely injured","effect":"reduce one physical characteristic by 1D"},{"roll":3,"name":"Missing Eye or Limb","effect":"reduce STR or DEX by 2"},{"roll":4,"name":"Scarred","effect":"reduce any physical characteristic by 2"},{"roll":5,"name":"Injured","effect":"reduce any physical characteristic by 1"},{"roll":6,"name":"Lightly Injured","effect":"no permanent effect"}],"medical_care":{"cost_per_point":5000,"_note":"Cr5000 to restore each lost characteristic point","employer_cover":"if injured in the service of an organisation, roll 2D on the Medical Bills table adding your rank as a DM; the result is the percentage of the cost the employer pays","medical_bills":[{"careers":["Army","Navy","Marine"],"4+":"75%","8+":"100%","12+":"100%"},{"careers":["Agent","Noble","Scholar","Entertainer","Merchant","Citizen"],"4+":"50%","8+":"75%","12+":"100%"},{"careers":["Scout","Rogue","Drifter"],"4+":"0%","8+":"50%","12+":"75%"}],"unpaid":"any balance the Traveller cannot pay becomes a starting debt"}},"life_events":[{"roll":2,"name":"Sickness or Injury","text":"You are injured or become sick. Roll on the Injury table."},{"roll":3,"name":"Birth or Death","text":"Someone close to you dies, or someone close to you gives birth. You are involved in some fashion."},{"roll":4,"name":"Ending of Relationship","text":"A romantic relationship involving you ends badly. Gain a Rival or Enemy."},{"roll":5,"name":"Improved Relationship","text":"A romantic relationship deepens, possibly leading to marriage or another commitment. Gain an Ally."},{"roll":6,"name":"New Relationship","text":"You become involved in a romantic relationship. Gain an Ally."},{"roll":7,"name":"New Contact","text":"You gain a new Contact."},{"roll":8,"name":"Betrayal","text":"You are betrayed by a friend. Convert a Contact or Ally into a Rival or Enemy; otherwise gain a Rival or Enemy."},{"roll":9,"name":"Travel","text":"You move to another world. Gain DM+2 to your next qualification roll."},{"roll":10,"name":"Good Fortune","text":"Something good happens to you. Gain DM+2 to any one Benefit roll."},{"roll":11,"name":"Crime","text":"You commit, suffer or are accused of a crime. Lose one Benefit roll or take the Prisoner career next term."},{"roll":12,"name":"Unusual Event","text":"Roll 1D on the Unusual Events sub-table.","subtable":[{"roll":1,"name":"Psionics","text":"You encounter a Psionic institute. You may immediately test your Psionic Strength and, if you qualify, take the Psion career next term."},{"roll":2,"name":"Aliens","text":"You spend time among an alien species. Gain Science 1 and a Contact among an alien species."},{"roll":3,"name":"Alien Artefact","text":"You have a strange device from an alien culture, not normally available to humans."},{"roll":4,"name":"Amnesia","text":"Something happened to you but you do not know what it was."},{"roll":5,"name":"Contact with Government","text":"You briefly came into contact with the highest echelons of the Imperium."},{"roll":6,"name":"Ancient Technology","text":"You have something older than the Imperium, or older than humanity."}]}],"_still_to_transcribe":["printed p47 (pdf 40): the general Other Benefits descriptions","printed p50 (pdf 43): skill packages","printed p22-45 (pdf 15-38): per-career skill tables, ranks, mishaps, events and the two Benefit columns"]},"packages":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp47 and 50 (pdf 40 and 43)","other_benefits":{"_intro":"Granted when you leave a career in good standing. Different careers grant different Benefits. Nearly every entry has a DUPLICATE rule -- what happens if you roll the same Benefit again -- so benefits are NOT idempotent and the engine must track how many times each has been taken.","Armour":{"grant":"any type of armour, limit Cr10000 and TL12","duplicate":"select another type within the same limits, or trade the original in for armour with a limit of Cr25000"},"Ally":{"grant":"gain an Ally"},"Blade":{"grant":"any blade weapon, limit Cr1000 and TL12","duplicate":"another blade, or one level in Melee (blade)"},"Characteristic Increase":{"grant":"increase the listed characteristic by the amount shown, up to your racial maximum (15 for humans)","overflow":"increases above 15 are LOST -- EXCEPT SOC: every point of excess SOC becomes a Ship Share","_note":"The SOC overflow rule is the one characteristic-cap exception in creation. Do not clamp SOC silently."},"Cybernetic Implant":{"grant":"any augmentation, limit Cr75000 and TL12","duplicate":"take a different augmentation, or increase one you already possess by one level of Improvement (this may exceed the Credit and TL limit)"},"Contact":{"grant":"gain a Contact"},"Free Trader":{"grant":"a free trader with 25% of the mortgage paid off; roll 1D times on the Spacecraft Quirks table","duplicate":"a further 25% of the mortgage paid off; four times clears it entirely","alternative":"may select a far trader instead"},"Gun":{"grant":"any common or military ranged weapon, limit Cr3000 and TL12","duplicate":"another weapon, or one level in the appropriate Gun Combat skill for a weapon already received as a Benefit"},"Lab Ship":{"grant":"a lab ship with 25% of the mortgage paid off; roll 1D times on the Spacecraft Quirks table","duplicate":"a further 25% of the mortgage paid off; four times clears it entirely"},"Personal Vehicle":{"grant":"a personal vehicle such as a ground car or air/raft, limit Cr300000 and TL10; may not be armed","duplicate":"gain a level of Drive or Flyer"},"Scientific Equipment":{"grant":"any one piece of scientific equipment, limit Cr2000 and TL12","duplicate":"another piece, or one level in Electronics or Science"},"Scout Ship":{"grant":"a scout ship; you have full use of it and may modify it, but it still belongs to the Scout Service and can be recalled, so you will be expected to run missions from time to time","duplicate":"RE-ROLL the result"},"Ship's Boat":{"grant":"a ship's boat or other small craft, limit MCr10 and TL12","duplicate":"gain Pilot (small craft)","alternative":"receive a Ship Share instead"},"Ship Shares":{"grant":"one or more Ship Shares toward obtaining a ship; each is worth MCr1 and cannot be redeemed for cash"},"Weapon":{"grant":"any weapon, limit Cr3000 and TL12","duplicate":"another weapon, or one level in the appropriate Melee or Gun Combat skill for a weapon already received as a Benefit"},"TAS Membership":{"grant":"membership of the Travellers' Aid Society: hostels and facilities at all Class A and B starports, available at reasonable cost to members and guests","lifetime":true,"transferable":false,"duplicate":"see mustering-out.json -- rolling it again yields two Ship Shares","purchasable":"membership may also be bought for MCr1, though an application can be black-balled by an existing member"}},"skill_packages":{"_rule":"As a group, all Travellers select ONE package between them. Each Traveller then takes turns selecting an item from the package until all skills have been taken.","_single_character_note":"This is a group rule. For a one-Traveller generator, present the package and let the user take the skills they would plausibly have claimed, or offer the whole package as a reference. Do not silently grant all of it.","Traveller":{"desc":"An all-round package, good for a campaign where the Travellers are trading one week and blowing things up the next.","skills":["Deception 1","Electronics 1","Gun Combat 1","Gunner 1","Medic 1","Persuade 1","Pilot 1","Stealth 1"]},"Trader":{"desc":"For campaigns where trading and commerce are the primary activities.","skills":["Advocate 1","Astrogation 1","Broker 1","Diplomat 1","Electronics 1","Medic 1","Pilot 1","Streetwise 1"]},"Explorer":{"desc":"For campaigns on the fringe of Charted Space, dealing with new worlds and ancient relics.","skills":["Astrogation 1","Electronics 1","Gun Combat 1","Medic 1","Pilot 1","Recon 1","Stealth 1","Survival 1"]},"Investigator":{"desc":"For campaigns centring on solving crimes and investigating mysteries.","skills":["Admin 1","Advocate 1","Deception 1","Electronics 1","Gun Combat 1","Investigate 1","Persuade 1","Stealth 1","Streetwise 1"]},"Mercenary":{"desc":"Focused on ground combat, aimed at combat-heavy games.","skills":["Electronics 1","Medic 1","Leadership 1","Heavy Weapons 1","Gun Combat 1","Gun Combat 1","Stealth 1","Recon 1"]},"Starship":{"desc":"For campaigns where the Travellers spend almost all their time on spacecraft.","skills":["Astrogation 1","Electronics 1","Engineer 1","Gunner 1","Mechanic 1","Medic 1","Pilot 1","Tactics (naval) 1"]},"Diplomat":{"desc":"For campaigns where the Travellers are government operatives and ambassadors.","skills":["Admin 1","Advocate 1","Deception 1","Diplomat 1","Electronics 1","Persuade 1","Stealth 1","Streetwise 1"]},"Criminal":{"desc":"For campaigns involving crime and elaborate heists.","skills":["Broker 1","Deception 1","Electronics 1","Medic 1","Persuade 1","Pilot 1","Stealth 1","Streetwise 1"]}},"_mercenary_note":"The Mercenary package genuinely lists Gun Combat 1 twice, as printed. Most packages hold 8 skills; Investigator holds 9."},"careers":{"agent":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp22-23 (pdf 15-16)","key":"agent","name":"Agent","blurb":"Law enforcement agencies, corporate operatives, spies and others who work in the shadows.","qualification":{"check":"INT 6+","dms":[{"when":"for every previous career","dm":-1}]},"military":false,"commission":null,"assignments":[{"key":"law_enforcement","name":"Law Enforcement","desc":"You are a police officer or detective.","survival":"END 6+","advancement":"INT 6+"},{"key":"intelligence","name":"Intelligence","desc":"You work as a spy or saboteur.","survival":"INT 7+","advancement":"INT 5+"},{"key":"corporate","name":"Corporate","desc":"You work for a corporation, spying on rival organisations.","survival":"INT 5+","advancement":"INT 7+"}],"skill_tables":{"personal_development":["Gun Combat","DEX +1","END +1","Melee","INT +1","Athletics"],"service_skills":["Streetwise","Drive","Investigate","Flyer","Recon","Gun Combat"],"advanced_education":{"min_edu":8,"skills":["Advocate","Language","Explosives","Medic","Vacc Suit","Electronics"]},"assignment":{"law_enforcement":["Investigate","Recon","Streetwise","Stealth","Melee","Advocate"],"intelligence":["Investigate","Recon","Electronics (comms)","Stealth","Persuade","Deception"],"corporate":["Investigate","Electronics (computers)","Stealth","Carouse","Deception","Streetwise"]}},"ranks":{"law_enforcement":[{"rank":0,"title":"Rookie","bonus":null},{"rank":1,"title":"Corporal","bonus":"Streetwise 1"},{"rank":2,"title":"Sergeant","bonus":null},{"rank":3,"title":"Detective","bonus":null},{"rank":4,"title":"Lieutenant","bonus":"Investigate 1"},{"rank":5,"title":"Chief","bonus":"Admin 1"},{"rank":6,"title":"Commissioner","bonus":"SOC +1"}],"intelligence_corporate":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":"Agent","bonus":"Deception 1"},{"rank":2,"title":"Field Agent","bonus":"Investigate 1"},{"rank":3,"title":null,"bonus":null},{"rank":4,"title":"Special Agent","bonus":"Gun Combat 1"},{"rank":5,"title":"Assistant Director","bonus":null},{"rank":6,"title":"Director","bonus":null}],"_shared":"Intelligence and Corporate share one rank table."},"mustering_out":[{"roll":1,"cash":1000,"benefit":"Scientific Equipment"},{"roll":2,"cash":2000,"benefit":"INT +1"},{"roll":3,"cash":5000,"benefit":"Ship Share"},{"roll":4,"cash":7500,"benefit":"Weapon"},{"roll":5,"cash":10000,"benefit":"Cybernetic Implant"},{"roll":6,"cash":25000,"benefit":"SOC +1 or Cybernetic Implant"},{"roll":7,"cash":50000,"benefit":"TAS Membership"}],"_mustering_note":"1D roll; a result of 7 is only reachable with a DM (rank 5-6 grants DM+1, Gambler grants DM+1 on Cash).","mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"A criminal or other figure under investigation offers you a deal. Accept and you leave this career without further penalty (though you lose the Benefit roll as normal). Refuse and you must roll twice on the Injury table and take the lower result; you gain an Enemy and one level in any skill you choose."},{"roll":3,"text":"An investigation goes critically wrong or leads to the top, ruining your career. Roll Advocate 8+. On success you may keep the Benefit roll from this term. If you roll 2, you must take the Prisoner career next term."},{"roll":4,"text":"You learn something you should not know and people want to kill you for it. Gain an Enemy and Deception 1."},{"roll":5,"text":"Your work comes home with you and someone gets hurt. Choose one of your Contacts, Allies or family members and roll twice on the Injury table for them, taking the lower result."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"An investigation takes a dangerous turn. Roll Investigate 8+ or Streetwise 8+. On failure roll on the Mishap table. On success increase one of Deception, Jack-of-all-Trades, Persuade or Tactics by one level."},{"roll":4,"text":"You complete a mission for your superiors and are suitably rewarded. Gain DM+1 to any one Benefit roll from this career."},{"roll":5,"text":"You establish a network of contacts. Gain D3 Contacts."},{"roll":6,"text":"You are given advanced training in a specialist field. Roll EDU 8+ to increase any one skill you already have by one level."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You go undercover to investigate an enemy. Roll Deception 8+. On success, roll immediately on the Rogue or Citizen Events table and make one roll on any Specialist skill table for that career. On failure, roll immediately on the Rogue or Citizen Mishap table."},{"roll":9,"text":"You go above and beyond the call of duty. Gain DM+2 to your next advancement roll."},{"roll":10,"text":"You are given specialist training in vehicles. Gain one of Drive 1, Flyer 1, Pilot 1 or Gunner 1."},{"roll":11,"text":"You are befriended by a senior agent. Either increase Investigate by one level, or gain DM+4 to an advancement roll thanks to their aid."},{"roll":12,"text":"Your efforts uncover a major conspiracy against your employers. You are automatically promoted."}]},"army":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp24-25 (pdf 17-18)","key":"army","name":"Army","blurb":"Members of the planetary armed fighting forces. Soldiers deal with planetary surface actions, battles and campaigns, and may also be mercenaries for hire.","qualification":{"check":"END 5+","dms":[{"when":"for every previous career","dm":-1},{"when":"aged 30 or more","dm":-2}]},"military":true,"commission":{"check":"SOC 8+"},"assignments":[{"key":"support","name":"Support","desc":"You are an engineer, cook or in some other role behind the front lines.","survival":"END 5+","advancement":"EDU 7+"},{"key":"infantry","name":"Infantry","desc":"You are one of the Poor Bloody Infantry on the ground.","survival":"STR 6+","advancement":"EDU 6+"},{"key":"cavalry","name":"Cavalry","desc":"You are one of the crew of a gunship or tank.","survival":"DEX 7+","advancement":"INT 5+"}],"skill_tables":{"personal_development":["STR +1","DEX +1","END +1","Gambler","Medic","Melee"],"service_skills":["Drive or Vacc Suit","Athletics","Gun Combat","Recon","Melee","Heavy Weapons"],"advanced_education":{"min_edu":8,"skills":["Tactics (military)","Electronics","Navigation","Explosives","Engineer","Survival"]},"officer":{"commissioned_only":true,"skills":["Tactics (military)","Leadership","Advocate","Diplomat","Electronics","Admin"]},"assignment":{"support":["Mechanic","Drive or Flyer","Profession","Explosives","Electronics (comms)","Medic"],"infantry":["Gun Combat","Melee","Heavy Weapons","Stealth","Athletics","Recon"],"cavalry":["Mechanic","Drive","Flyer","Recon","Heavy Weapons (vehicle)","Electronics (sensors)"]}},"ranks":{"enlisted":[{"rank":0,"title":"Private","bonus":"Gun Combat 1"},{"rank":1,"title":"Lance Corporal","bonus":"Recon 1"},{"rank":2,"title":"Corporal","bonus":null},{"rank":3,"title":"Lance Sergeant","bonus":"Leadership 1"},{"rank":4,"title":"Sergeant","bonus":null},{"rank":5,"title":"Gunnery Sergeant","bonus":null},{"rank":6,"title":"Sergeant Major","bonus":null}],"officer":[{"rank":1,"title":"Lieutenant","bonus":"Leadership 1"},{"rank":2,"title":"Captain","bonus":null},{"rank":3,"title":"Major","bonus":"Tactics (military) 1"},{"rank":4,"title":"Lieutenant Colonel","bonus":null},{"rank":5,"title":"Colonel","bonus":null},{"rank":6,"title":"General","bonus":"SOC 10 or SOC +1, whichever is higher"}]},"mustering_out":[{"roll":1,"cash":2000,"benefit":"Cybernetic Implant"},{"roll":2,"cash":5000,"benefit":"INT +1"},{"roll":3,"cash":10000,"benefit":"EDU +1"},{"roll":4,"cash":10000,"benefit":"Weapon"},{"roll":5,"cash":10000,"benefit":"Armour"},{"roll":6,"cash":20000,"benefit":"END +1 or Cybernetic Implant"},{"roll":7,"cash":30000,"benefit":"SOC +1"}],"mishaps":[{"roll":1,"text":"Severely injured in action (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"Your unit is slaughtered in a disastrous battle, for which you blame your commander. Gain them as an Enemy as they have you removed from the service."},{"roll":3,"text":"You are sent to a very unpleasant region (jungle, swamp, desert, icecap, urban) to battle guerrilla fighters and rebels. You are discharged because of stress, injury, or because the government wishes to bury the incident. Increase Recon or Survival by one level but gain the rebels as an Enemy."},{"roll":4,"text":"You discover your commanding officer is engaged in illegal activity such as weapon smuggling. Join their ring and gain them as an Ally before the inevitable investigation gets you discharged, or co-operate with the military police -- the official whitewash gets you discharged anyway but you may keep your Benefit roll from this term."},{"roll":5,"text":"You are tormented by or quarrel with an officer or fellow soldier. Gain that officer as a Rival as they drive you out of the service."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"You are assigned to a planet with a hostile or wild environment. Gain one of Vacc Suit 1, Engineer 1, Animals (riding or training) 1 or Recon 1."},{"roll":4,"text":"You are assigned to an urbanised planet torn by war. Gain one of Stealth 1, Streetwise 1, Persuade 1 or Recon 1."},{"roll":5,"text":"You are given a special assignment or duty in your unit. Gain DM+1 to any one Benefit roll."},{"roll":6,"text":"You are thrown into a brutal ground war. Roll EDU 8+ to avoid injury; on success you gain one level in Gun Combat or Leadership."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You are given advanced training in a specialist field. Roll EDU 8+ to increase any one skill you already have by one level."},{"roll":9,"text":"Surrounded and outnumbered by the enemy, you hold out until relief arrives. Gain DM+2 to your next advancement roll."},{"roll":10,"text":"You are assigned to a peacekeeping role. Gain one of Admin 1, Investigate 1, Deception 1 or Recon 1."},{"roll":11,"text":"Your commanding officer takes an interest in your career. Either gain Tactics (military) 1 or DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"You display heroism in battle. You may gain a promotion or a commission automatically."}]},"citizen":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp26-27 (pdf 19-20)","key":"citizen","name":"Citizen","blurb":"Individuals serving in a corporation, bureaucracy or industry, or who are making a new life on an untamed planet.","qualification":{"check":"EDU 5+","dms":[{"when":"for every previous career","dm":-1}]},"military":false,"commission":null,"basic_training_exception":"Use the ASSIGNMENT skill table for basic training, not Service Skills.","assignments":[{"key":"corporate","name":"Corporate","desc":"You are an executive or manager in a large corporation.","survival":"SOC 6+","advancement":"INT 6+"},{"key":"worker","name":"Worker","desc":"You are a blue collar worker on an industrial world.","survival":"END 4+","advancement":"EDU 8+"},{"key":"colonist","name":"Colonist","desc":"You are building a new life on a recently settled world that still needs taming.","survival":"INT 7+","advancement":"END 5+"}],"skill_tables":{"personal_development":["EDU +1","INT +1","Carouse","Gambler","Drive","Jack-of-all-Trades"],"service_skills":["Drive","Flyer","Streetwise","Melee","Steward","Profession"],"advanced_education":{"min_edu":10,"skills":["Art","Advocate","Diplomat","Language","Electronics (computers)","Medic"]},"_advanced_education_note":"Citizen's Advanced Education table requires EDU 10+, NOT the usual 8+.","assignment":{"corporate":["Advocate","Admin","Broker","Electronics (computers)","Diplomat","Leadership"],"worker":["Drive","Mechanic","Electronics","Engineer","Profession","Science"],"colonist":["Animals","Athletics","Jack-of-all-Trades","Drive","Survival","Recon"]}},"ranks":{"corporate":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":null},{"rank":2,"title":"Manager","bonus":"Admin 1"},{"rank":3,"title":null,"bonus":null},{"rank":4,"title":"Senior Manager","bonus":"Advocate 1"},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":"Director","bonus":"SOC +1"}],"worker":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":null},{"rank":2,"title":"Technician","bonus":"Profession 1"},{"rank":3,"title":null,"bonus":null},{"rank":4,"title":"Craftsman","bonus":"Mechanic 1"},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":"Master Technician","bonus":"Engineer 1"}],"colonist":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":null},{"rank":2,"title":"Settler","bonus":"Survival 1"},{"rank":3,"title":null,"bonus":null},{"rank":4,"title":"Explorer","bonus":"Navigation 1"},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":null,"bonus":"Gun Combat 1"}]},"mustering_out":[{"roll":1,"cash":2000,"benefit":"Ship Share"},{"roll":2,"cash":5000,"benefit":"Ally"},{"roll":3,"cash":10000,"benefit":"INT +1"},{"roll":4,"cash":10000,"benefit":"Gun"},{"roll":5,"cash":10000,"benefit":"EDU +1"},{"roll":6,"cash":50000,"benefit":"Two Ship Shares"},{"roll":7,"cash":100000,"benefit":"TAS Membership"}],"mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"You are harassed and your life ruined by a criminal gang. Gain the gang as an Enemy."},{"roll":3,"text":"Hard times caused by a lack of interstellar trade cost you your job. Lose one SOC."},{"roll":4,"text":"Your business is investigated by the planetary authorities (or your colony suffers offworld interference). Co-operate and the business or colony is shut down but you gain DM+2 to the qualification roll for your next career. Refuse and gain an Ally."},{"roll":5,"text":"A revolution, attack or other unusual event throws your life into chaos, forcing you to leave the planet. Roll Streetwise 8+; on success increase any skill you have by one level."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"Political upheaval strikes your homeworld and you are caught up in the revolution. Gain either Advocate 1, Persuade 1, Explosives 1 or Streetwise 1, then roll whichever skill you chose 8+. On success you come out on the winning side and gain DM+2 to your next advancement roll. On failure you suffer DM-2 to your next Survival roll."},{"roll":4,"text":"You spend time maintaining and using heavy vehicles, as part of your job or as a hobby. Increase Mechanic, Drive, Electronics, Flyer or Engineer by one level."},{"roll":5,"text":"Your business expands, your corporation grows or the colony thrives. Gain DM+1 to any one Benefit roll."},{"roll":6,"text":"You are given advanced training in a specialist field. Roll EDU 10+ to gain any one skill of your choice at level 1."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You learn something you should not have -- a corporate secret or political scandal -- which you can profit from illegally. If you do, gain DM+1 to a Benefit roll from this career and gain Streetwise 1, Deception 1 or a criminal Contact. If you refuse, you gain nothing."},{"roll":9,"text":"You are rewarded for your diligence or cunning. Gain DM+2 to your next advancement roll."},{"roll":10,"text":"You gain experience in a technical field as a computer operator or surveyor. Increase Electronics or Engineer by one level."},{"roll":11,"text":"You befriend a superior in the corporation or the colony. Gain an Ally. Either gain Diplomat 1 or DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"You rise to a position of power in your colony or corporation. You are automatically promoted."}]},"drifter":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp28-29 (pdf 21-22)","key":"drifter","name":"Drifter","blurb":"Wanderers, hitchhikers and travellers, drifters are those who roam the stars without obvious purpose or direction.","qualification":{"check":"Automatic","automatic":true,"dms":[]},"military":false,"commission":null,"basic_training_exception":"Use the ASSIGNMENT skill table for basic training, not Service Skills.","_structure_note":"Drifter has NO Advanced Education table -- only Personal Development, Service Skills and the three assignment tables. It is the only career with four skill tables rather than five.","_pension_note":"Drifter is one of the careers excluded from pensions (with Scout, Rogue and Prisoner).","assignments":[{"key":"barbarian","name":"Barbarian","desc":"You live on a primitive world without the benefits of technology.","survival":"END 7+","advancement":"STR 7+"},{"key":"wanderer","name":"Wanderer","desc":"You are a space bum, living hand-to-mouth in slums and spaceports across the galaxy.","survival":"END 7+","advancement":"INT 7+"},{"key":"scavenger","name":"Scavenger","desc":"You work as a belter (asteroid miner) or on a salvage crew.","survival":"DEX 7+","advancement":"END 7+"}],"skill_tables":{"personal_development":["STR +1","END +1","DEX +1","Language","Profession","Jack-of-all-Trades"],"service_skills":["Athletics","Melee (unarmed)","Recon","Streetwise","Stealth","Survival"],"advanced_education":null,"assignment":{"barbarian":["Animals","Carouse","Melee (blade)","Stealth","Seafarer (personal or sail)","Survival"],"wanderer":["Drive","Deception","Recon","Stealth","Streetwise","Survival"],"scavenger":["Pilot (small craft)","Mechanic","Astrogation","Vacc Suit","Profession","Gun Combat"]}},"ranks":{"barbarian":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Survival 1"},{"rank":2,"title":"Warrior","bonus":"Melee (blade) 1"},{"rank":3,"title":null,"bonus":null},{"rank":4,"title":"Chieftain","bonus":"Leadership 1"},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":"Warlord","bonus":null}],"wanderer":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Streetwise 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":null,"bonus":"Deception 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":null,"bonus":null}],"scavenger":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Vacc Suit 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":null,"bonus":"Profession (belter) 1 or Mechanic 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":null,"bonus":null}]},"mustering_out":[{"roll":1,"cash":0,"benefit":"Contact"},{"roll":2,"cash":0,"benefit":"Weapon"},{"roll":3,"cash":1000,"benefit":"Ally"},{"roll":4,"cash":2000,"benefit":"Weapon"},{"roll":5,"cash":3000,"benefit":"EDU +1"},{"roll":6,"cash":4000,"benefit":"Ship Share"},{"roll":7,"cash":8000,"benefit":"Two Ship Shares"}],"_cash_note":"Rolls 1 and 2 on the Cash column pay nothing at all ('None' in the book), not Cr0 as a rounding -- the Drifter is the only career with worthless cash results.","mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"Injured. Roll on the Injury table."},{"roll":3,"text":"You run afoul of a criminal gang, corrupt bureaucrat or other foe. Gain an Enemy."},{"roll":4,"text":"You suffer from a life-threatening illness. Reduce your END by 1."},{"roll":5,"text":"Betrayed by a friend. One of your Contacts or Allies betrays you, ending your career; that Contact or Ally becomes a Rival or Enemy. If you have none, you are betrayed by someone you never saw coming and still gain a Rival or Enemy. In addition, roll 2D; on a 2 you must take the Prisoner career next term."},{"roll":6,"text":"You do not know what happened to you. There is a gap in your memory."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"A patron offers you a chance at a job. If you accept, gain DM+4 to your next qualification roll but you owe that patron a favour."},{"roll":4,"text":"You pick up a few useful skills here and there. Gain one level of Jack-of-all-Trades, Survival, Streetwise or Melee (any)."},{"roll":5,"text":"You manage to scavenge something of use. Gain DM+1 to any one Benefit roll."},{"roll":6,"text":"You encounter something unusual. Go to the Life Events table and have an Unusual Event."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You are attacked by enemies. Gain an Enemy if you do not have one already, and roll either Melee 8+, Gun Combat 8+ or Stealth 8+ to avoid a roll on the Injury table."},{"roll":9,"text":"You are offered a chance at a risky but rewarding adventure. If you accept, roll 1D: on 1-2 you are injured or arrested (roll on the Injury table or take the Prisoner career next term); on 3-4 you survive but gain nothing; on 5-6 you succeed and gain DM+4 to one Benefit roll."},{"roll":10,"text":"Life on the edge hones your abilities. Increase any skill you already have by one level."},{"roll":11,"text":"You are forcibly drafted. Roll for the Draft next term."},{"roll":12,"text":"You thrive on adversity. You are automatically promoted."}]},"entertainer":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp30-31 (pdf 23-24)","key":"entertainer","name":"Entertainer","blurb":"Individuals who are involved with the media, whether as reporters, artists or celebrities.","qualification":{"check":"DEX or INT 5+","choice_of":["DEX","INT"],"target":5,"dms":[{"when":"for every previous career","dm":-1}]},"_qualification_note":"The only career so far whose qualification lets the player choose which characteristic to test.","military":false,"commission":null,"assignments":[{"key":"artist","name":"Artist","desc":"You are a writer, holographer or other creative.","survival":"SOC 6+","advancement":"INT 6+"},{"key":"journalist","name":"Journalist","desc":"You report on local or galactic events for a news feed, the TAS or other organisation.","survival":"EDU 7+","advancement":"INT 5+"},{"key":"performer","name":"Performer","desc":"You are an actor, dancer, acrobat, professional athlete or other public performer.","survival":"INT 5+","advancement":"DEX 7+"}],"skill_tables":{"personal_development":["DEX +1","INT +1","SOC +1","Language","Carouse","Jack-of-all-Trades"],"service_skills":["Art","Carouse","Deception","Drive","Persuade","Steward"],"advanced_education":{"min_edu":10,"skills":["Advocate","Broker","Deception","Science","Streetwise","Diplomat"]},"_advanced_education_note":"Requires EDU 10+, as with Citizen -- not the usual 8+.","assignment":{"artist":["Art","Carouse","Electronics (computers)","Gambler","Persuade","Profession"],"journalist":["Art (holography or write)","Electronics","Drive","Investigate","Recon","Streetwise"],"performer":["Art (performer or instrument)","Athletics","Carouse","Deception","Stealth","Streetwise"]}},"ranks":{"artist":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Art 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":null,"bonus":"Investigate 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":"Famous Artist","bonus":"SOC +1"},{"rank":6,"title":null,"bonus":null}],"journalist":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":"Freelancer","bonus":"Electronics (comms) 1"},{"rank":2,"title":"Staff Writer","bonus":"Investigate 1"},{"rank":3,"title":null,"bonus":null},{"rank":4,"title":"Correspondent","bonus":"Persuade 1"},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":"Senior Correspondent","bonus":"SOC +1"}],"performer":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"DEX +1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":null,"bonus":"STR +1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":"Famous Performer","bonus":"SOC +1"},{"rank":6,"title":null,"bonus":null}]},"mustering_out":[{"roll":1,"cash":0,"benefit":"Contact"},{"roll":2,"cash":0,"benefit":"SOC +1"},{"roll":3,"cash":10000,"benefit":"Contact"},{"roll":4,"cash":10000,"benefit":"SOC +1"},{"roll":5,"cash":40000,"benefit":"INT +1"},{"roll":6,"cash":40000,"benefit":"Two Ship Shares"},{"roll":7,"cash":80000,"benefit":"SOC +1 and EDU +1"}],"_cash_note":"Rolls 1 and 2 on the Cash column read 'None' in the book, as with Drifter.","mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"You expose or are involved in a scandal of some sort."},{"roll":3,"text":"Public opinion turns on you. Reduce your SOC by 1."},{"roll":4,"text":"You are betrayed by a peer. One of your Contacts or Allies betrays you, ending your career; that Contact or Ally becomes a Rival or Enemy. If you have none, you are betrayed by someone you never saw coming and still gain a Rival or Enemy."},{"roll":5,"text":"An investigation, tour, project or expedition goes wrong, stranding you far from home. Gain one of Survival 1, Pilot 1, Persuade 1 or Streetwise 1."},{"roll":6,"text":"You are forced out because of censorship or controversy. What truth did you get too close to? You gain DM+2 to the qualification roll for your next career."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"You are invited to take part in a controversial event or exhibition. Roll Art or Investigate 8+. On success gain one SOC; on failure lose one SOC."},{"roll":4,"text":"You are part of your homeworld's celebrity circles. Gain one of Carouse 1, Persuade 1, Steward 1 or a Contact."},{"roll":5,"text":"One of your works is especially well received and popular, making you a minor celebrity. Gain DM+1 to any one Benefit roll."},{"roll":6,"text":"You gain a patron in the arts. Gain DM+2 to your next advancement roll and an Ally."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You have the opportunity to criticise or bring down a questionable political leader on your homeworld. If you refuse and support the leader, you gain nothing. If you accept, gain an Enemy and roll Art or Persuade 8+; on success gain one level in any skill you already have, on failure increase a skill anyway and roll on the Mishap table."},{"roll":9,"text":"You go on a tour of the sector, visiting several worlds. Gain D3 Contacts."},{"roll":10,"text":"One of your pieces of art is stolen and the investigation brings you into the criminal underworld. Gain one of Streetwise 1, Investigate 1, Recon 1 or Stealth 1."},{"roll":11,"text":"As an artist, you lead a strange and charmed life. Go to the Life Events table and have an Unusual Event."},{"roll":12,"text":"You win a prestigious prize. You are automatically promoted."}]},"marine":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp32-33 (pdf 25-26)","key":"marine","name":"Marine","blurb":"Members of the armed fighting forces carried aboard starships. Marines deal with piracy and boarding actions in space, defend navy starports and bases, and supplement ground forces such as the army.","qualification":{"check":"END 6+","dms":[{"when":"for every previous career","dm":-1},{"when":"aged 30 or more","dm":-2}]},"military":true,"commission":{"check":"SOC 8+"},"assignments":[{"key":"support","name":"Support","desc":"You are a quartermaster, engineer or battlefield medic in the marines.","survival":"END 5+","advancement":"EDU 7+"},{"key":"star_marine","name":"Star Marine","desc":"You are trained to fight boarding actions and capture enemy vessels.","survival":"END 6+","advancement":"EDU 6+"},{"key":"ground_assault","name":"Ground Assault","desc":"You are kicked out of a spacecraft in high orbit and told to 'capture that planet'.","survival":"END 7+","advancement":"EDU 5+"}],"skill_tables":{"personal_development":["STR +1","DEX +1","END +1","Gambler","Melee (unarmed)","Melee (blade)"],"service_skills":["Athletics","Vacc Suit","Tactics","Heavy Weapons","Gun Combat","Stealth"],"advanced_education":{"min_edu":8,"skills":["Medic","Survival","Explosives","Engineer","Pilot","Navigation"]},"officer":{"commissioned_only":true,"skills":["Electronics","Tactics","Admin","Advocate","Diplomat","Leadership"]},"assignment":{"support":["Electronics","Mechanic","Drive or Flyer","Medic","Heavy Weapons","Gun Combat"],"star_marine":["Vacc Suit","Athletics","Gunner","Melee (blade)","Electronics","Gun Combat"],"ground_assault":["Vacc Suit","Heavy Weapons","Recon","Melee (blade)","Tactics (military)","Gun Combat"]}},"ranks":{"enlisted":[{"rank":0,"title":"Marine","bonus":"Gun Combat (any) 1 or Melee (blade) 1"},{"rank":1,"title":"Lance Corporal","bonus":"Gun Combat (any) 1"},{"rank":2,"title":"Corporal","bonus":null},{"rank":3,"title":"Lance Sergeant","bonus":"Leadership 1"},{"rank":4,"title":"Sergeant","bonus":null},{"rank":5,"title":"Gunnery Sergeant","bonus":"END +1"},{"rank":6,"title":"Sergeant Major","bonus":null}],"officer":[{"rank":1,"title":"Lieutenant","bonus":"Leadership 1"},{"rank":2,"title":"Captain","bonus":null},{"rank":3,"title":"Force Commander","bonus":"Tactics 1"},{"rank":4,"title":"Lieutenant Colonel","bonus":null},{"rank":5,"title":"Colonel","bonus":"SOC 10 or SOC +1, whichever is higher"},{"rank":6,"title":"Brigadier","bonus":null}]},"_rank_note":"Marine's SOC bonus lands at officer rank 5 (Colonel); Army's lands at rank 6 (General). Do not share one officer table between them.","mustering_out":[{"roll":1,"cash":2000,"benefit":"Armour"},{"roll":2,"cash":5000,"benefit":"INT +1"},{"roll":3,"cash":5000,"benefit":"EDU +1"},{"roll":4,"cash":10000,"benefit":"Weapon"},{"roll":5,"cash":20000,"benefit":"TAS Membership"},{"roll":6,"cash":30000,"benefit":"Armour or END +1"},{"roll":7,"cash":40000,"benefit":"SOC +2"}],"mishaps":[{"roll":1,"text":"Severely injured in action (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"A mission goes wrong; you and several others are captured and mistreated by the enemy. Due to your injuries you are discharged early. Gain your jailer as an Enemy and reduce your STR and DEX by one."},{"roll":3,"text":"A mission goes wrong and you are stranded behind enemy lines. Increase Stealth or Survival by one level but, due to the mission's failure, you are ejected from the service."},{"roll":4,"text":"You are ordered to take part in a black ops mission that goes against your conscience. If you refuse you are ejected from the service. If you accept you may stay with the marines but gain the lone survivor as an Enemy."},{"roll":5,"text":"You are tormented by or quarrel with an officer or fellow marine. Gain that character as a Rival as they drive you out of the service."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"Trapped behind enemy lines, you have to survive on your own. Gain one of Survival 1, Stealth 1, Deception 1 or Streetwise 1."},{"roll":4,"text":"You are assigned to the security staff of a space station. Increase Vacc Suit or Athletics (dexterity) by one level."},{"roll":5,"text":"You are given advanced training in a specialist field. Roll EDU 8+ to gain any one skill of your choice at level 1."},{"roll":6,"text":"You are assigned to an assault on an enemy fortress. Roll Melee or Gun Combat 8+; on success gain Tactics (military) or Leadership. On failure you are injured and lose 1 point from any physical characteristic."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You are on the front lines of a planetary assault and occupation. Gain one of Recon 1, Gun Combat 1, Leadership 1 or Electronics (comms) 1."},{"roll":9,"text":"A mission goes disastrously wrong due to your commander's error or incompetence, but you survive. Report them and gain DM+2 to your next advancement roll plus the officer as an Enemy; say nothing and protect them, and gain them as an Ally."},{"roll":10,"text":"You are assigned to a black ops mission. Gain DM+2 to your next advancement roll."},{"roll":11,"text":"Your commanding officer takes an interest in your career. Either gain Tactics 1 or DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"You display heroism in battle. You may gain a promotion or a commission automatically."}]},"merchant":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp34-35 (pdf 27-28)","key":"merchant","name":"Merchant","blurb":"Members of a commercial enterprise. Merchants may crew the ships of the huge trading corporations, or work for independent free traders carrying chance cargoes and passengers between worlds.","qualification":{"check":"INT 4+","dms":[{"when":"for every previous career","dm":-1}]},"military":false,"commission":null,"assignments":[{"key":"merchant_marine","name":"Merchant Marine","desc":"You work on one of the massive cargo haulers run by the Imperium or a megacorporation.","survival":"EDU 5+","advancement":"INT 7+"},{"key":"free_trader","name":"Free Trader","desc":"You are part of the crew of a tramp trader.","survival":"DEX 6+","advancement":"INT 6+"},{"key":"broker","name":"Broker","desc":"You work in a planetside brokerage or starport.","survival":"EDU 5+","advancement":"INT 7+"}],"skill_tables":{"personal_development":["STR +1","DEX +1","END +1","INT +1","Language","Streetwise"],"service_skills":["Drive","Vacc Suit","Broker","Steward","Electronics","Persuade"],"advanced_education":{"min_edu":8,"skills":["Engineer","Astrogation","Electronics","Pilot","Admin","Advocate"]},"assignment":{"merchant_marine":["Pilot","Vacc Suit","Athletics","Mechanic","Engineer","Electronics"],"free_trader":["Pilot (spacecraft)","Vacc Suit","Deception","Mechanic","Streetwise","Gunner"],"broker":["Admin","Advocate","Broker","Streetwise","Deception","Persuade"]}},"ranks":{"merchant_marine":[{"rank":0,"title":"Crewman","bonus":null},{"rank":1,"title":"Senior Crewman","bonus":"Mechanic 1"},{"rank":2,"title":"4th Officer","bonus":null},{"rank":3,"title":"3rd Officer","bonus":null},{"rank":4,"title":"2nd Officer","bonus":"Pilot 1"},{"rank":5,"title":"1st Officer","bonus":"SOC +1"},{"rank":6,"title":"Captain","bonus":null}],"free_trader":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Persuade 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":"Experienced Trader","bonus":"Jack-of-all-Trades 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":null,"bonus":null}],"broker":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Broker 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":"Experienced Broker","bonus":"Streetwise 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":null,"bonus":null}]},"mustering_out":[{"roll":1,"cash":1000,"benefit":"Blade"},{"roll":2,"cash":5000,"benefit":"INT +1"},{"roll":3,"cash":10000,"benefit":"EDU +1"},{"roll":4,"cash":20000,"benefit":"Gun"},{"roll":5,"cash":20000,"benefit":"Ship Share"},{"roll":6,"cash":40000,"benefit":"Free Trader"},{"roll":7,"cash":40000,"benefit":"Free Trader"}],"mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"You are bankrupted by a rival. You lose all Benefits from this career and gain the other trader as a Rival."},{"roll":3,"text":"A sudden war destroys your trade routes and contacts, forcing you to flee that region of space. Gain Gun Combat 1 or Pilot 1."},{"roll":4,"text":"Your ship or starport is destroyed by criminals. Gain them as an Enemy."},{"roll":5,"text":"Imperial trade restrictions force you out of business. You may take the Rogue career next term without needing to roll for qualification."},{"roll":6,"text":"A series of bad deals and decisions force you into bankruptcy. You salvage what you can: you may take a Benefit roll for this term as well as any others you are entitled to."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"You are offered the opportunity to smuggle illegal items onto a planet. If you accept, roll Deception 8+ or Persuade 8+ to gain Streetwise 1 and an extra Benefit roll. If you refuse, you gain an Enemy in the criminal sphere."},{"roll":4,"text":"Gain any one of these skills, reflecting time spent dealing with suppliers and spacers: Profession 1, Electronics 1, Engineer 1, Animals 1 or Science 1."},{"roll":5,"text":"You have a chance to risk your fortune on a possibly lucrative deal. Gamble a number of Benefit rolls and roll Gambler 8+ or Broker 8+. On success gain half as many Benefit rolls as you risked, rounding up; on failure lose all the rolls risked. Either way gain one level in whichever skill you used."},{"roll":6,"text":"You make an unexpected connection outside your normal circles. Gain a Contact."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You are embroiled in legal trouble. Gain one of Advocate 1, Admin 1, Diplomat 1 or Investigate 1, then roll 2D; on a 2 you must take the Prisoner career next term."},{"roll":9,"text":"You are given advanced training in a specialist field. Roll EDU 8+ to increase any one skill you already have by one level."},{"roll":10,"text":"A good deal ensures you are living the high life for a few years. Gain DM+1 to any one Benefit roll."},{"roll":11,"text":"You befriend a useful ally in one sphere. Gain an Ally and either gain a level in Carouse or DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"Your business or ship thrives. You are automatically promoted."}]},"navy":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp36-37 (pdf 29-30)","key":"navy","name":"Navy","blurb":"Members of the interstellar navy that patrols space between the stars, responsible for protecting society from foreign powers and lawless elements in the interstellar trade channels.","qualification":{"check":"INT 6+","dms":[{"when":"for every previous career","dm":-1},{"when":"aged 34 or more","dm":-2}]},"_age_penalty_warning":"Navy's age threshold is 34, NOT 30. Army and Marine both use 30. Do not factor these into a shared 'military age penalty' constant.","military":true,"commission":{"check":"SOC 8+"},"assignments":[{"key":"line_crew","name":"Line/Crew","desc":"You serve as a general crewman or officer on a ship of the line.","survival":"INT 5+","advancement":"EDU 7+"},{"key":"engineer_gunner","name":"Engineer/Gunner","desc":"You serve as a specialist technician on a starship.","survival":"INT 6+","advancement":"EDU 6+"},{"key":"flight","name":"Flight","desc":"You are a pilot of a shuttle, fighter or other light craft.","survival":"DEX 7+","advancement":"EDU 5+"}],"skill_tables":{"personal_development":["STR +1","DEX +1","END +1","INT +1","EDU +1","SOC +1"],"service_skills":["Pilot","Vacc Suit","Athletics","Gunner","Mechanic","Gun Combat"],"advanced_education":{"min_edu":8,"skills":["Electronics","Astrogation","Engineer","Flyer","Medic","Admin"]},"officer":{"commissioned_only":true,"skills":["Leadership","Electronics","Pilot","Melee (blade)","Admin","Tactics (naval)"]},"assignment":{"line_crew":["Electronics","Mechanic","Gun Combat","Flyer","Melee","Vacc Suit"],"engineer_gunner":["Engineer","Mechanic","Electronics","Engineer","Gunner","Flyer"],"flight":["Pilot","Flyer","Gunner","Pilot (small craft)","Astrogation","Electronics"]}},"_engineer_gunner_note":"The Engineer/Gunner assignment table genuinely lists Engineer twice (results 1 and 4) in the book. Not a transcription error.","ranks":{"enlisted":[{"rank":0,"title":"Crewman","bonus":null},{"rank":1,"title":"Able Spacehand","bonus":"Mechanic 1"},{"rank":2,"title":"Petty Officer, 3rd class","bonus":"Vacc Suit 1"},{"rank":3,"title":"Petty Officer, 2nd class","bonus":null},{"rank":4,"title":"Petty Officer, 1st class","bonus":"END +1"},{"rank":5,"title":"Chief Petty Officer","bonus":null},{"rank":6,"title":"Master Chief","bonus":null}],"officer":[{"rank":1,"title":"Ensign","bonus":"Melee (blade) 1"},{"rank":2,"title":"Sublieutenant","bonus":"Leadership 1"},{"rank":3,"title":"Lieutenant","bonus":null},{"rank":4,"title":"Commander","bonus":"Tactics (naval) 1"},{"rank":5,"title":"Captain","bonus":"SOC 10 or SOC +1, whichever is higher"},{"rank":6,"title":"Admiral","bonus":"SOC 12 or SOC +1, whichever is higher"}]},"_rank_note":"Navy is the only career granting the SOC floor bonus TWICE -- SOC 10 at Captain and SOC 12 at Admiral.","mustering_out":[{"roll":1,"cash":1000,"benefit":"Personal Vehicle or Ship Share"},{"roll":2,"cash":5000,"benefit":"INT +1"},{"roll":3,"cash":5000,"benefit":"EDU +1 or two Ship Shares"},{"roll":4,"cash":10000,"benefit":"Weapon"},{"roll":5,"cash":20000,"benefit":"TAS Membership"},{"roll":6,"cash":50000,"benefit":"Ship's Boat or two Ship Shares"},{"roll":7,"cash":50000,"benefit":"SOC +2"}],"mishaps":[{"roll":1,"text":"Severely injured in action (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"Placed in the frozen watch (cryogenically stored on board ship) and revived improperly. Reduce STR, DEX or END by 1 due to muscle wastage. You are NOT ejected from this career."},{"roll":3,"text":"During a battle, defeat or victory depends on your actions. Make an 8+ roll using a skill that depends on your branch: Electronics (sensors) or Gunner if crew, Mechanic or Vacc Suit if engineer/gunner, Pilot (small craft or spacecraft) or Tactics (naval) if flight. On failure the ship suffers severe damage, you are blamed, court-martialled and discharged. On success you are honourably discharged -- you still leave the career but may keep your Benefit roll from this term."},{"roll":4,"text":"You are blamed for an accident that causes the death of several crew members. If you were responsible, gain one free roll on the Skills and Training tables before you are ejected, as guilt drives you to excel. If you were not, gain the officer who blamed you as an Enemy but keep your Benefit roll from this term."},{"roll":5,"text":"You are tormented by or quarrel with an officer or fellow crewman. Gain that character as a Rival as they force you out of the Navy."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"_mishap_note":"Navy mishap 2 explicitly does NOT eject the Traveller -- the 'unless otherwise stated' exception from the general survival rules.","events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"You join a gambling circle on board. Gain Gambler 1 or Deception 1. If you wish, throw Gambler 8+: on success gain an extra Benefit roll from this career, on failure lose one Benefit roll from this career."},{"roll":4,"text":"You are given a special assignment or duty on board ship. Gain DM+1 to any one Benefit roll."},{"roll":5,"text":"You are given advanced training in a specialist field. Roll EDU 8+ to gain one level in any skill you already have."},{"roll":6,"text":"Your vessel participates in a notable military engagement. Gain one of Electronics 1, Engineer 1, Gunner 1 or Pilot 1."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"Your vessel participates in a diplomatic mission. Gain one of Recon 1, Diplomat 1, Steward 1 or a Contact."},{"roll":9,"text":"You foil an attempted crime on board, such as mutiny, sabotage, smuggling or conspiracy. Gain an Enemy but also DM+2 to your next advancement roll in the Navy."},{"roll":10,"text":"You have the opportunity to abuse your position for profit. If you do so, gain an extra Benefit roll from this term. Refuse and you get DM+2 to your next advancement roll."},{"roll":11,"text":"Your commanding officer takes an interest in your career. Either gain Tactics (naval) 1 or DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"You display heroism in battle, saving the whole ship. You automatically pass your next promotion or commission roll."}]},"noble":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp38-39 (pdf 31-32)","key":"noble","name":"Noble","blurb":"Individuals of the upper class who perform little consistent function but often have large amounts of ready money.","qualification":{"check":"SOC 10+","dms":[{"when":"for every previous career","dm":-1}],"auto_if":{"characteristic":"SOC","min":10}},"_qualification_note":"Noble is the only career with an AUTOMATIC qualification clause: SOC 10 or higher qualifies without a roll. The SOC 10+ check therefore only ever matters for Travellers with SOC 9 or below, who must roll 2D + SOC DM. Steepest entry bar in the book.","military":false,"commission":null,"assignments":[{"key":"administrator","name":"Administrator","desc":"You serve in the planetary government or even rule over a fiefdom or other domain.","survival":"INT 4+","advancement":"EDU 6+"},{"key":"diplomat","name":"Diplomat","desc":"You are a diplomat or other state official.","survival":"INT 5+","advancement":"SOC 7+"},{"key":"dilettante","name":"Dilettante","desc":"You are known for being known and have absolutely no useful function in society.","survival":"SOC 5+","advancement":"INT 7+"}],"_survival_note":"Dilettante is the only assignment in the book whose SURVIVAL roll keys off SOC.","skill_tables":{"personal_development":["STR +1","DEX +1","END +1","Gambler","Gun Combat","Melee"],"service_skills":["Admin","Advocate","Electronics","Diplomat","Investigate","Persuade"],"advanced_education":{"min_edu":8,"skills":["Science","Advocate","Language","Leadership","Diplomat","Art"]},"assignment":{"administrator":["Admin","Advocate","Broker","Diplomat","Leadership","Persuade"],"diplomat":["Advocate","Carouse","Electronics","Steward","Diplomat","Deception"],"dilettante":["Carouse","Deception","Flyer","Streetwise","Gambler","Jack-of-all-Trades"]}},"ranks":{"administrator":[{"rank":0,"title":"Assistant","bonus":null},{"rank":1,"title":"Clerk","bonus":"Admin 1"},{"rank":2,"title":"Supervisor","bonus":null},{"rank":3,"title":"Manager","bonus":"Advocate 1"},{"rank":4,"title":"Chief","bonus":null},{"rank":5,"title":"Director","bonus":"Leadership 1"},{"rank":6,"title":"Minister","bonus":null}],"diplomat":[{"rank":0,"title":"Intern","bonus":null},{"rank":1,"title":"3rd Secretary","bonus":"Admin 1"},{"rank":2,"title":"2nd Secretary","bonus":null},{"rank":3,"title":"1st Secretary","bonus":"Advocate 1"},{"rank":4,"title":"Counsellor","bonus":null},{"rank":5,"title":"Minister","bonus":"Diplomat 1"},{"rank":6,"title":"Ambassador","bonus":null}],"dilettante":[{"rank":0,"title":"Wastrel","bonus":null},{"rank":1,"title":null,"bonus":null},{"rank":2,"title":"Ingrate","bonus":"Carouse 1"},{"rank":3,"title":null,"bonus":null},{"rank":4,"title":"Black Sheep","bonus":"Persuade 1"},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":"Scoundrel","bonus":"Jack-of-all-Trades 1"}]},"mustering_out":[{"roll":1,"cash":10000,"benefit":"Ship Share"},{"roll":2,"cash":10000,"benefit":"Two Ship Shares"},{"roll":3,"cash":50000,"benefit":"Blade"},{"roll":4,"cash":50000,"benefit":"SOC +1"},{"roll":5,"cash":100000,"benefit":"TAS Membership"},{"roll":6,"cash":100000,"benefit":"Yacht"},{"roll":7,"cash":200000,"benefit":"SOC +1 and Yacht"}],"_cash_note":"Noble has by far the richest Cash column in the book -- Cr200000 on a 7, against Cr50000 for the Navy.","mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"A family scandal forces you out of your position. Lose one SOC."},{"roll":3,"text":"A disaster or war strikes. Roll Stealth 8+ or Deception 8+ to escape unhurt; on failure roll on the Injury table."},{"roll":4,"text":"Political manoeuvrings usurp your position. Increase Diplomat or Advocate by one level and gain a Rival."},{"roll":5,"text":"An assassin attempts to end your life. Roll END 8+; on failure roll on the Injury table."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"You are challenged to a duel for your honour and standing. If you refuse, reduce your SOC by 1. If you accept, roll Melee (blade) 8+: on success gain one SOC; on failure roll on the Injury table and reduce your SOC by one. Either way gain one level in Melee (blade), Leadership, Tactics (any) or Deception."},{"roll":4,"text":"Your time as a ruler or playboy gives you a wide range of experiences. Gain one of Animals (handling) 1, Art 1, Carouse 1 or Streetwise 1."},{"roll":5,"text":"You inherit a gift from a rich relative. Gain DM+1 to any one Benefit roll."},{"roll":6,"text":"You become deeply involved in politics on your world of residence, becoming a player in the intrigues of government. Gain one level in Advocate, Admin, Diplomat or Persuade but also gain a Rival."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"A conspiracy of nobles attempts to recruit you. If you refuse, gain the conspiracy as an Enemy. If you accept, roll Deception 8+ or Persuade 8+: on failure roll on the Mishap table as the conspiracy collapses; on success gain one level of Deception, Persuade, Tactics or Carouse."},{"roll":9,"text":"Your reign is acclaimed by all as fair and wise -- or, as a dilettante, you sponge off your family's wealth a while longer. Gain either a jealous relative or an unhappy subject as an Enemy. Gain DM+2 to your next advancement roll."},{"roll":10,"text":"You manipulate and charm your way through high society. Gain one level of Carouse, Diplomat, Persuade or Steward, as well as a Rival and an Ally."},{"roll":11,"text":"You make an alliance with a powerful and charismatic noble, who becomes an Ally. Either gain one level of Leadership or DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"Your efforts do not go unnoticed by the Imperium. You are automatically promoted."}]},"rogue":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp40-41 (pdf 33-34)","key":"rogue","name":"Rogue","blurb":"Criminal elements familiar with the rougher or more illegal methods of attaining goals.","qualification":{"check":"DEX 6+","dms":[{"when":"for every previous career","dm":-1}]},"military":false,"commission":null,"_pension_note":"Rogue is one of the careers excluded from pensions (with Scout, Prisoner and Drifter).","assignments":[{"key":"thief","name":"Thief","desc":"You steal from the rich and give to... well, yourself, actually.","survival":"INT 6+","advancement":"DEX 6+"},{"key":"enforcer","name":"Enforcer","desc":"You are a leg breaker, thug or assassin for a criminal group.","survival":"END 6+","advancement":"STR 6+"},{"key":"pirate","name":"Pirate","desc":"You are a space-going corsair.","survival":"DEX 6+","advancement":"INT 6+"}],"skill_tables":{"personal_development":["Carouse","DEX +1","END +1","Gambler","Melee","Gun Combat"],"service_skills":["Deception","Recon","Athletics","Gun Combat","Stealth","Streetwise"],"advanced_education":{"min_edu":10,"skills":["Electronics","Navigation","Medic","Investigate","Broker","Advocate"]},"_advanced_education_note":"Requires EDU 10+, as with Citizen and Entertainer -- not the usual 8+.","assignment":{"thief":["Stealth","Electronics","Recon","Streetwise","Deception","Athletics"],"enforcer":["Gun Combat","Melee","Streetwise","Persuade","Athletics","Drive"],"pirate":["Pilot","Astrogation","Gunner","Engineer","Vacc Suit","Melee"]}},"ranks":{"thief":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Stealth 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":null,"bonus":"Streetwise 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":"Recon 1"},{"rank":6,"title":null,"bonus":null}],"enforcer":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Persuade 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":null,"bonus":"Gun Combat 1 or Melee 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":"Streetwise 1"},{"rank":6,"title":null,"bonus":null}],"pirate":[{"rank":0,"title":"Lackey","bonus":null},{"rank":1,"title":"Henchman","bonus":"Pilot 1 or Gunner 1"},{"rank":2,"title":"Corporal","bonus":null},{"rank":3,"title":"Sergeant","bonus":"Gun Combat 1 or Melee 1"},{"rank":4,"title":"Lieutenant","bonus":null},{"rank":5,"title":"Leader","bonus":"Leadership 1"},{"rank":6,"title":"Captain","bonus":null}]},"mustering_out":[{"roll":1,"cash":0,"benefit":"Ship Share"},{"roll":2,"cash":0,"benefit":"Weapon"},{"roll":3,"cash":10000,"benefit":"INT +1"},{"roll":4,"cash":10000,"benefit":"1D Ship Shares"},{"roll":5,"cash":50000,"benefit":"Armour"},{"roll":6,"cash":100000,"benefit":"DEX +1"},{"roll":7,"cash":100000,"benefit":"2D Ship Shares"}],"_cash_note":"Rolls 1 and 2 on the Cash column read 'None' in the book, as with Drifter and Entertainer.","_benefit_note":"Rogue is the only career whose benefits grant a VARIABLE number of Ship Shares (1D on a 4, 2D on a 7).","mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"Arrested. You must take the Prisoner career in your next term."},{"roll":3,"text":"Betrayed by a friend. One of your Contacts or Allies betrays you, ending your career; that Contact or Ally becomes a Rival or Enemy. If you have none, you are betrayed by someone you never saw coming and still gain a Rival or Enemy. In addition, roll 2D; on a 2 you must take the Prisoner career next term."},{"roll":4,"text":"A job goes wrong, forcing you to flee off-planet. Gain one of Deception 1, Pilot (small craft or spacecraft) 1, Athletics (dexterity) 1 or Gunner 1."},{"roll":5,"text":"A police detective or rival criminal forces you to flee and vows to hunt you down. Gain an Enemy."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"You are arrested and charged. Defend yourself or hire a lawyer. If you defend yourself, roll Advocate 8+: on success the charges are dropped; on failure gain an Enemy and take the Prisoner career next term. If you hired a lawyer, gain the lawyer as a Contact and lose a Benefit roll."},{"roll":4,"text":"You are involved in the planning of an impressive heist. Gain Electronics 1 or Mechanic 1."},{"roll":5,"text":"One of your crimes pays off. Gain DM+2 to any one Benefit roll and gain your victim as an Enemy."},{"roll":6,"text":"You have the opportunity to backstab a fellow rogue for personal gain. If you do so, gain DM+4 to your next advancement roll. If you refuse, gain them as an Ally."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You spend months in the dangerous criminal underworld. Gain one of Streetwise 1, Stealth 1, Melee 1 or Gun Combat 1."},{"roll":9,"text":"You become involved in a feud with a rival criminal organisation. Roll Stealth or Gun Combat 8+; on failure roll on the Injury table, on success gain an extra Benefit roll."},{"roll":10,"text":"You are involved in a gambling ring. Gain Gambler 1. You may wager any number of Benefit rolls and roll Gambler 8+; on failure lose all the wagered Benefit rolls, on success gain half as many Benefit rolls as you wagered, rounding up."},{"roll":11,"text":"A crime lord considers you his protege. Either gain Tactics (military) 1 or DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"You commit a legendary crime. You are automatically promoted."}]},"scholar":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp42-43 (pdf 35-36)","key":"scholar","name":"Scholar","blurb":"Individuals trained in technological or research sciences who conduct scientific investigations into materials, situations and phenomena, or who practise medicine.","qualification":{"check":"INT 6+","dms":[{"when":"for every previous career","dm":-1}]},"military":false,"commission":null,"assignments":[{"key":"field_researcher","name":"Field Researcher","desc":"You are an explorer or field researcher, equally at home in the laboratory or wilderness.","survival":"END 6+","advancement":"INT 6+"},{"key":"scientist","name":"Scientist","desc":"You are a researcher in some corporation or research institution, or a mad scientist in an orbiting laboratory.","survival":"EDU 4+","advancement":"INT 8+"},{"key":"physician","name":"Physician","desc":"You are a doctor, healer or medical researcher.","survival":"EDU 4+","advancement":"EDU 8+"}],"skill_tables":{"personal_development":["INT +1","EDU +1","SOC +1","DEX +1","END +1","Language"],"service_skills":["Drive or Flyer","Electronics","Diplomat","Medic","Investigate","Science"],"advanced_education":{"min_edu":10,"skills":["Art","Advocate","Electronics","Language","Engineer","Science"]},"_advanced_education_note":"Requires EDU 10+. Scholar is the fourth career at this tier, with Citizen, Entertainer and Rogue.","assignment":{"field_researcher":["Electronics","Vacc Suit","Navigation","Survival","Investigate","Science"],"scientist":["Admin","Engineer","Science","Science","Electronics","Science"],"physician":["Medic","Electronics","Investigate","Medic","Persuade","Science"]}},"_assignment_table_note":"The Scientist table lists Science three times (3, 4 and 6) and Physician lists Medic twice (1 and 4). Both are as printed, not transcription errors.","ranks":{"field_researcher":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Science 1"},{"rank":2,"title":null,"bonus":"Electronics (computers) 1"},{"rank":3,"title":null,"bonus":"Investigate 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":"Science 2"},{"rank":6,"title":null,"bonus":null}],"scientist":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Science 1"},{"rank":2,"title":null,"bonus":"Electronics (computers) 1"},{"rank":3,"title":null,"bonus":"Investigate 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":"Science 2"},{"rank":6,"title":null,"bonus":null}],"physician":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":null,"bonus":"Medic 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":null,"bonus":"Science 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":"Science 2"},{"rank":6,"title":null,"bonus":null}]},"_rank_note":"Scholar is the only career whose rank bonuses grant a skill at LEVEL 2 outright (Science 2 at rank 5 on all three tracks). The general skill-table rule -- take the listed level only if higher than current -- applies.","mustering_out":[{"roll":1,"cash":5000,"benefit":"INT +1"},{"roll":2,"cash":10000,"benefit":"EDU +1"},{"roll":3,"cash":20000,"benefit":"Two Ship Shares"},{"roll":4,"cash":30000,"benefit":"SOC +1"},{"roll":5,"cash":40000,"benefit":"Scientific Equipment"},{"roll":6,"cash":60000,"benefit":"Lab Ship"},{"roll":7,"cash":100000,"benefit":"Lab Ship"}],"mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"A disaster leaves several injured and others blame you, forcing you to leave your career. Roll on the Injury table twice, taking the HIGHER result, and gain a Rival."},{"roll":3,"text":"The planetary government interferes with your research for political or religious reasons. Continue openly: increase Science by one level and gain an Enemy. Continue secretly: increase Science by one level and reduce your SOC by 2. This mishap does NOT cause you to leave this career."},{"roll":4,"text":"An expedition or voyage goes wrong, leaving you stranded in the wilderness. Gain Survival 1 or Athletics (dexterity or endurance) 1. By the time you find your way home, your job is gone."},{"roll":5,"text":"Your work is sabotaged by unknown parties. You may salvage what you can and give up (leave the career but retain this term's Benefit roll), or start again from scratch (lose all Benefit rolls from this career but you do not have to leave)."},{"roll":6,"text":"A rival researcher blackens your name or steals your research. Gain a Rival, but you do NOT have to leave this career."}],"_mishap_note":"Scholar has THREE non-ejecting mishaps (3, 5 and 6) -- more than any other career -- and mishap 2 is the only one in the book that takes the HIGHER of two Injury rolls rather than the lower.","events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"You are called upon to perform research that goes against your conscience. Accept and you gain an extra Benefit roll, a level in each of any two Science specialities, and D3 Enemies."},{"roll":4,"text":"You are assigned to work on a secret project for a patron or organisation. Gain one of Medic 1, Science 1, Engineer 1, Electronics 1 or Investigate 1."},{"roll":5,"text":"You win a prestigious prize for your work, garnering both the praise and envy of your peers. Gain DM+1 to any one Benefit roll."},{"roll":6,"text":"You are given advanced training in a specialist field. Roll EDU 8+ to gain any one skill of your choice at level 1."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"You have the opportunity to cheat in some fashion -- stealing another's work, using an alien device, taking a shortcut. If you refuse you gain nothing. If you accept, roll Deception 8+ or Admin 8+: on success gain DM+2 to any one Benefit roll and may increase any skill by one level, but also gain an Enemy; on failure gain an Enemy and lose one Benefit roll from this career."},{"roll":9,"text":"You make a breakthrough in your field. Gain DM+2 to your next advancement roll."},{"roll":10,"text":"You become entangled in a bureaucratic or legal morass that distracts you from your work. Gain one of Admin 1, Advocate 1, Persuade 1 or Diplomat 1."},{"roll":11,"text":"You work for an eccentric but brilliant mentor, who becomes an Ally. Either increase Science by one level or gain DM+4 to your next advancement roll thanks to their aid."},{"roll":12,"text":"Your work leads to a considerable breakthrough. You are automatically promoted."}]},"scout":{"_source":"Mongoose Traveller 2e Core Rulebook Update 2022, printed pp44-45 (pdf 37-38)","key":"scout","name":"Scout","blurb":"Members of the exploratory service. Scouts explore new areas, map and survey known or newly discovered areas, and maintain communication ships carrying information and messages between the worlds of the galaxy.","qualification":{"check":"INT 5+","dms":[{"when":"for every previous career","dm":-1}]},"military":false,"commission":null,"_pension_note":"Scout is one of the careers excluded from pensions (with Rogue, Prisoner and Drifter).","assignments":[{"key":"courier","name":"Courier","desc":"You are responsible for shuttling messages and high value packages around the galaxy.","survival":"END 5+","advancement":"EDU 9+"},{"key":"surveyor","name":"Surveyor","desc":"You visit border worlds and assess their worth.","survival":"END 6+","advancement":"INT 8+"},{"key":"explorer","name":"Explorer","desc":"You go wherever the map is blank, exploring unknown worlds and uncharted space.","survival":"END 7+","advancement":"EDU 7+"}],"_advancement_note":"Courier's EDU 9+ is the hardest advancement target in the book.","skill_tables":{"personal_development":["STR +1","DEX +1","END +1","INT +1","EDU +1","Jack-of-all-Trades"],"service_skills":["Pilot (small craft or spacecraft)","Survival","Mechanic","Astrogation","Vacc Suit","Gun Combat"],"advanced_education":{"min_edu":8,"skills":["Medic","Language","Seafarer","Explosives","Science","Jack-of-all-Trades"]},"assignment":{"courier":["Electronics","Flyer","Pilot (spacecraft)","Engineer","Athletics","Astrogation"],"surveyor":["Electronics","Persuade","Pilot","Navigation","Diplomat","Streetwise"],"explorer":["Electronics","Pilot","Engineer","Science","Stealth","Recon"]}},"ranks":{"all":[{"rank":0,"title":null,"bonus":null},{"rank":1,"title":"Scout","bonus":"Vacc Suit 1"},{"rank":2,"title":null,"bonus":null},{"rank":3,"title":"Senior Scout","bonus":"Pilot 1"},{"rank":4,"title":null,"bonus":null},{"rank":5,"title":null,"bonus":null},{"rank":6,"title":null,"bonus":null}]},"_rank_note":"Scout is the only career with a SINGLE rank table shared by all three assignments -- the book heads it simply 'TITLE' rather than naming an assignment. Contrast Agent, which shares one track between two of its three assignments.","mustering_out":[{"roll":1,"cash":20000,"benefit":"Ship Share"},{"roll":2,"cash":20000,"benefit":"INT +1"},{"roll":3,"cash":30000,"benefit":"EDU +1"},{"roll":4,"cash":30000,"benefit":"Weapon"},{"roll":5,"cash":50000,"benefit":"Weapon"},{"roll":6,"cash":50000,"benefit":"Scout Ship"},{"roll":7,"cash":50000,"benefit":"Scout Ship"}],"mishaps":[{"roll":1,"text":"Severely injured (as a result of 2 on the Injury table). Alternatively, roll twice on the Injury table and take the lower result."},{"roll":2,"text":"Psychologically damaged by your time in the scouts. Reduce your INT or SOC by 1."},{"roll":3,"text":"Your ship is damaged and you have to hitch-hike your way back across the stars to the nearest scout base. Gain 1D Contacts and D3 Enemies."},{"roll":4,"text":"You inadvertently cause a conflict between the Imperium and a minor world or species. Gain a Rival and Diplomat 1."},{"roll":5,"text":"You have no idea what happened to you -- they found your ship drifting on the fringes of friendly space."},{"roll":6,"text":"Injured. Roll on the Injury table."}],"events":[{"roll":2,"text":"Disaster! Roll on the Mishap table, but you are not ejected from this career."},{"roll":3,"text":"Your ship is ambushed by enemy vessels. Either run and roll Pilot 8+ to escape, or treat with them and roll Persuade 10+ to bargain. On failure your ship is destroyed and you may not re-enlist in the Scouts at the end of this term. On success you survive and gain Electronics (sensors) 1. Either way, gain an Enemy."},{"roll":4,"text":"You survey an alien world. Gain one of Animals (riding or training) 1, Survival 1, Recon 1 or Science 1."},{"roll":5,"text":"You perform an exemplary service for the scouts. Gain DM+1 to any one Benefit roll."},{"roll":6,"text":"You spend several years jumping from world to world in your scout ship. Gain one of Astrogation 1, Electronics 1, Navigation 1, Pilot (small craft) 1 or Mechanic 1."},{"roll":7,"text":"Life Event. Roll on the Life Events table."},{"roll":8,"text":"When dealing with an alien species you have an opportunity to gather extra intelligence about them. Roll either Electronics 8+ or Deception 8+. On success gain an Ally in the Imperium and DM+2 to your next advancement roll. On failure roll on the Mishap table, but you are not ejected from this career."},{"roll":9,"text":"Your scout ship is one of the first on the scene to rescue the survivors of a disaster. Roll either Medic 8+ or Engineer 8+. On success gain a Contact and DM+2 to your next advancement roll. On failure gain an Enemy."},{"roll":10,"text":"You spend a great deal of time on the fringes of Charted Space. Roll Survival 8+ or Pilot 8+. On success gain a Contact in an alien species and one level in any skill of your choice. On failure roll on the Mishap table, but you are not ejected from this career."},{"roll":11,"text":"You serve as the courier for an important message from the Imperium. Either gain one level of Diplomat or DM+4 to your next advancement roll."},{"roll":12,"text":"You discover a world, item or information of worth to the Imperium. You are automatically promoted."}]}}};</script>
+<script>
+/* Traveller creation engine -- Mongoose Traveller 2e.
+   Pure logic, no DOM. The UI drives it by reading S.pending and calling choose().
+
+   Shape, per DESIGN.md: an outer PHASE spine with a TERM LOOP phase that re-enters
+   itself, and a `pending` object describing what the UI must ask right now. Outcomes
+   are rolled, so `pending` is often reporting a result rather than asking a question.
+*/
+(function (root) {
+  'use strict';
+
+  // ---------- deterministic RNG (seedable so lifepaths can be replayed) ----------
+  function RNG(seed) {
+    this.s = (seed >>> 0) || 1;
+  }
+  RNG.prototype.next = function () {
+    // xorshift32
+    var x = this.s;
+    x ^= x << 13; x >>>= 0;
+    x ^= x >> 17;
+    x ^= x << 5;  x >>>= 0;
+    this.s = x;
+    return x / 4294967296;
+  };
+  RNG.prototype.d6 = function () { return Math.floor(this.next() * 6) + 1; };
+  RNG.prototype.d2 = function () { return this.d6() + this.d6(); };
+  RNG.prototype.d3 = function () { return Math.floor(this.next() * 3) + 1; };
+  RNG.prototype.pick = function (a) { return a[Math.floor(this.next() * a.length)]; };
+
+  // ---------- characteristic helpers ----------
+  var CHARS = ['STR', 'DEX', 'END', 'INT', 'EDU', 'SOC'];
+  var PHYSICAL = ['STR', 'DEX', 'END'];
+  var MENTAL = ['INT', 'EDU', 'SOC'];
+
+  function dm(score) {
+    if (score <= 0) return -3;
+    if (score <= 2) return -2;
+    if (score <= 5) return -1;
+    if (score <= 8) return 0;
+    if (score <= 11) return 1;
+    if (score <= 14) return 2;
+    return 3;
+  }
+
+  // "INT 6+" / "DEX or INT 5+" / "Automatic" -> {chars:[..], target:n} | {auto:true}
+  function parseCheck(str) {
+    if (!str || /^automatic$/i.test(str)) return { auto: true };
+    var m = String(str).match(/^([A-Z]{3})(?:\s+or\s+([A-Z]{3}))?\s+(\d+)\+$/);
+    if (!m) return { auto: true, unparsed: str };
+    var cs = [m[1]];
+    if (m[2]) cs.push(m[2]);
+    return { chars: cs, target: parseInt(m[3], 10) };
+  }
+
+  // ---------- skill helpers ----------
+  // Skill entries look like "Gun Combat", "Streetwise 1", "Gambler 0", "DEX +1",
+  // "Drive or Vacc Suit", "Electronics (comms)".
+  function isCharBump(entry) { return /^([A-Z]{3})\s*\+(\d+)$/.test(entry); }
+
+  function applySkillEntry(S, entry, log) {
+    if (!entry) return;
+    var cb = entry.match(/^([A-Z]{3})\s*\+(\d+)$/);
+    if (cb) { bumpChar(S, cb[1], parseInt(cb[2], 10), log); return; }
+    if (/\sor\s/.test(entry)) {
+      // a choice the UI should make; when auto-resolving, take the first
+      entry = entry.split(/\s+or\s+/)[0];
+    }
+    var lm = entry.match(/^(.*?)\s+(\d+)$/);
+    var name, lvl;
+    if (lm) { name = lm[1]; lvl = parseInt(lm[2], 10); } else { name = entry; lvl = null; }
+    var cur = S.skills[name];
+    if (lvl === null) {
+      // no level listed: gain at 1 if untrained, else +1
+      S.skills[name] = (cur === undefined) ? 1 : Math.min(cur + 1, 4);
+    } else {
+      // level listed: take it only if higher than current
+      if (cur === undefined || lvl > cur) S.skills[name] = Math.min(lvl, 4);
+      else return; // no benefit
+    }
+    if (log) log.push('skill: ' + name + ' -> ' + S.skills[name]);
+  }
+
+  function bumpChar(S, k, n, log) {
+    if (CHARS.indexOf(k) < 0) return;
+    var next = S.chars[k] + n;
+    if (next > 15) {
+      // increases above 15 are lost -- EXCEPT SOC, where the excess becomes Ship Shares
+      if (k === 'SOC') {
+        S.shipShares += (next - 15);
+        if (log) log.push('SOC over 15: +' + (next - 15) + ' Ship Shares');
+      }
+      next = 15;
+    }
+    S.chars[k] = next;
+    if (log) log.push('char: ' + k + ' -> ' + next);
+  }
+
+  function totalSkillLevels(S) {
+    var t = 0;
+    for (var k in S.skills) t += S.skills[k];
+    return t;
+  }
+  function skillCap(S) { return 3 * (S.chars.INT + S.chars.EDU); }
+
+  // ---------- state ----------
+  function newState(DATA, seed) {
+    return {
+      DATA: DATA,
+      rng: new RNG(seed),
+      seed: seed,
+      phase: 'characteristics',
+      chars: { STR: 0, DEX: 0, END: 0, INT: 0, EDU: 0, SOC: 0 },
+      age: 18,
+      homeworld: '',
+      name: '',
+      skills: {},
+      shipShares: 0,
+      education: null,
+      terms: [],          // append-only history
+      current: null,      // the term being played
+      careerTermCount: {},// terms served per career (for the advancement check)
+      draftUsed: false,
+      benefitRolls: 0,    // banked, spent at mustering out
+      cashRollsUsed: 0,   // max 3 across ALL careers, for life
+      cash: 0,
+      benefits: [],       // resolved Other Benefits, in order taken
+      benefitCounts: {},  // how many times each has been taken (duplicates differ)
+      associates: [],
+      pension: 0,
+      debt: 0,
+      log: [],
+      pending: null,
+      done: false
+    };
+  }
+
+  // ---------- entry ----------
+  function start(DATA, seed) {
+    var S = newState(DATA, seed);
+    rollCharacteristics(S);
+    S.phase = 'background';
+    S.pending = {
+      kind: 'backgroundSkills',
+      count: Math.max(0, dm(S.chars.EDU) + 3),
+      options: DATA.core.background_skills.list.slice(),
+      note: 'EDU DM + 3 background skills, each at level 0.'
+    };
+    return S;
+  }
+
+  function rollCharacteristics(S) {
+    for (var i = 0; i < CHARS.length; i++) S.chars[CHARS[i]] = S.rng.d2();
+    S.log.push('characteristics rolled');
+  }
+
+  // ---------- the term loop ----------
+  function beginTerm(S) {
+    S.pending = {
+      kind: 'pickCareer',
+      options: careerOptions(S),
+      canEducate: educationAvailable(S),
+      term: S.terms.length + 1,
+      age: S.age
+    };
+  }
+
+  function educationAvailable(S) {
+    // terms 1-3 only, and only if not already attempted successfully
+    return S.terms.length < 3 && !(S.education && S.education.entered);
+  }
+
+  function careerOptions(S) {
+    var out = [], D = S.DATA.careers;
+    for (var k in D) {
+      var prev = lastCareer(S);
+      // you cannot return to a career you left in the immediately preceding term
+      if (prev && prev.career === k && prev.leftBecause) continue;
+      out.push(k);
+    }
+    return out;
+  }
+  function lastCareer(S) { return S.terms.length ? S.terms[S.terms.length - 1] : null; }
+
+  function qualify(S, careerKey, assignmentKey) {
+    var c = S.DATA.careers[careerKey];
+    var q = c.qualification;
+    var chk = parseCheck(q.check);
+    var auto = chk.auto;
+    if (q.auto_if && S.chars[q.auto_if.characteristic] >= q.auto_if.min) auto = true;
+
+    var roll = null, total = null, ok = true;
+    if (!auto) {
+      var mod = 0;
+      // DM-1 per previous career (distinct careers already entered)
+      mod -= Object.keys(S.careerTermCount).length;
+      for (var i = 0; i < (q.dms || []).length; i++) {
+        var d = q.dms[i];
+        var am = /aged (\d+)/.exec(d.when);
+        if (am && S.age >= parseInt(am[1], 10)) mod += d.dm;
+      }
+      var best = -99;
+      for (var j = 0; j < chk.chars.length; j++) best = Math.max(best, dm(S.chars[chk.chars[j]]));
+      roll = S.rng.d2();
+      total = roll + best + mod;
+      ok = total >= chk.target;
+    }
+    return { auto: auto, roll: roll, total: total, ok: ok };
+  }
+
+  function enterCareer(S, careerKey, assignmentKey) {
+    var c = S.DATA.careers[careerKey];
+    var firstEver = Object.keys(S.careerTermCount).length === 0;
+    S.current = {
+      career: careerKey,
+      assignment: assignmentKey,
+      rank: 0,
+      commissioned: false,
+      officerRank: 0,
+      termNo: S.terms.length + 1,
+      age: S.age,
+      skillRolls: [],
+      events: [],
+      leftBecause: null
+    };
+    // basic training
+    var firstInCareer = !S.careerTermCount[careerKey];
+    if (firstInCareer) {
+      var table = c.basic_training_exception
+        ? c.skill_tables.assignment[assignmentKey]
+        : c.skill_tables.service_skills;
+      if (firstEver) {
+        for (var i = 0; i < table.length; i++) {
+          var e = table[i];
+          if (!isCharBump(e)) grantAtZero(S, e);
+        }
+        S.log.push('basic training: all service skills at 0');
+      } else {
+        // subsequent careers: pick ONE at level 0 -- auto-resolve takes the first
+        grantAtZero(S, table[0]);
+        S.log.push('basic training: one service skill at 0');
+      }
+    }
+    S.careerTermCount[careerKey] = (S.careerTermCount[careerKey] || 0) + 1;
+  }
+
+  function grantAtZero(S, entry) {
+    if (/\sor\s/.test(entry)) entry = entry.split(/\s+or\s+/)[0];
+    var name = entry.replace(/\s+\d+$/, '');
+    if (S.skills[name] === undefined) S.skills[name] = 0;
+  }
+
+  function availableSkillTables(S) {
+    var c = S.DATA.careers[S.current.career], t = c.skill_tables, out = [];
+    out.push({ key: 'personal_development', label: 'Personal Development' });
+    out.push({ key: 'service_skills', label: 'Service Skills' });
+    out.push({ key: 'assignment', label: 'Assignment: ' + S.current.assignment });
+    if (t.advanced_education && S.chars.EDU >= t.advanced_education.min_edu) {
+      out.push({ key: 'advanced_education', label: 'Advanced Education (EDU ' + t.advanced_education.min_edu + '+)' });
+    }
+    if (t.officer && S.current.commissioned) out.push({ key: 'officer', label: 'Officer' });
+    return out;
+  }
+
+  function rollSkillTable(S, tableKey) {
+    var c = S.DATA.careers[S.current.career], t = c.skill_tables, list;
+    if (tableKey === 'assignment') list = t.assignment[S.current.assignment];
+    else if (tableKey === 'advanced_education') list = t.advanced_education.skills;
+    else if (tableKey === 'officer') list = t.officer.skills;
+    else list = t[tableKey];
+    var r = S.rng.d6();
+    var entry = list[r - 1];
+    applySkillEntry(S, entry, S.log);
+    S.current.skillRolls.push({ table: tableKey, roll: r, entry: entry });
+    return { roll: r, entry: entry };
+  }
+
+  function survival(S) {
+    var c = S.DATA.careers[S.current.career];
+    var a = findAssignment(c, S.current.assignment);
+    var chk = parseCheck(a.survival);
+    var roll = S.rng.d2();
+    var total = roll + dm(S.chars[chk.chars[0]]);
+    var ok = roll !== 2 && total >= chk.target;   // a natural 2 always fails
+    return { roll: roll, total: total, ok: ok, check: a.survival };
+  }
+
+  function findAssignment(c, key) {
+    for (var i = 0; i < c.assignments.length; i++) if (c.assignments[i].key === key) return c.assignments[i];
+    return c.assignments[0];
+  }
+
+  function advancement(S) {
+    var c = S.DATA.careers[S.current.career];
+    var a = findAssignment(c, S.current.assignment);
+    var chk = parseCheck(a.advancement);
+    var roll = S.rng.d2();
+    var total = roll + dm(S.chars[chk.chars[0]]);
+    var served = S.careerTermCount[S.current.career];
+    return {
+      roll: roll, total: total, ok: total >= chk.target, check: a.advancement,
+      mustLeave: total <= served && roll !== 12,   // rolled at or under terms served
+      mustStay: roll === 12
+    };
+  }
+
+  function commissionRoll(S) {
+    var c = S.DATA.careers[S.current.career];
+    if (!c.commission) return null;
+    var chk = parseCheck(c.commission.check);
+    var termsInCareer = S.careerTermCount[S.current.career];
+    var mod = termsInCareer > 1 ? -(termsInCareer - 1) : 0;
+    var roll = S.rng.d2();
+    var total = roll + dm(S.chars[chk.chars[0]]) + mod;
+    return { roll: roll, total: total, ok: total >= chk.target, dm: mod };
+  }
+
+  function commissionAllowed(S) {
+    var c = S.DATA.careers[S.current.career];
+    if (!c.commission || S.current.commissioned) return false;
+    var termsInCareer = S.careerTermCount[S.current.career];
+    return termsInCareer === 1 || S.chars.SOC >= 9;
+  }
+
+  function rankBonus(S) {
+    var c = S.DATA.careers[S.current.career];
+    var track = pickRankTrack(c, S.current);
+    if (!track) return;
+    var r = S.current.commissioned ? S.current.officerRank : S.current.rank;
+    for (var i = 0; i < track.length; i++) {
+      if (track[i].rank === r && track[i].bonus) {
+        applyRankBonus(S, track[i].bonus);
+        return track[i];
+      }
+    }
+    return null;
+  }
+
+  function pickRankTrack(c, cur) {
+    var R = c.ranks;
+    if (!R) return null;
+    if (cur.commissioned && R.officer) return R.officer;
+    if (R.all) return R.all;
+    if (R[cur.assignment]) return R[cur.assignment];
+    if (R.enlisted) return R.enlisted;
+    // partially shared tracks, e.g. Agent's intelligence_corporate
+    for (var k in R) if (k.indexOf(cur.assignment) >= 0) return R[k];
+    return null;
+  }
+
+  function applyRankBonus(S, bonus) {
+    // "SOC 10 or SOC +1, whichever is higher" and friends
+    var m = bonus.match(/^([A-Z]{3})\s+(\d+)\s+or\s+\1\s*\+\s*(\d+)/);
+    if (m) {
+      var k = m[1], floor = parseInt(m[2], 10), plus = parseInt(m[3], 10);
+      var target = Math.max(floor, S.chars[k] + plus);
+      bumpChar(S, k, target - S.chars[k], S.log);
+      return;
+    }
+    applySkillEntry(S, bonus, S.log);
+  }
+
+  function ageingDue(S) { return S.terms.length >= 4; }
+
+  function ageingRoll(S) {
+    var roll = S.rng.d2() - S.terms.length;
+    var effect;
+    if (roll >= 1) effect = null;
+    else if (roll === 0) effect = { phys: [1] };
+    else if (roll === -1) effect = { phys: [1, 1] };
+    else if (roll === -2) effect = { phys: [1, 1, 1] };
+    else if (roll === -3) effect = { phys: [2, 1, 1] };
+    else if (roll === -4) effect = { phys: [2, 2, 1] };
+    else if (roll === -5) effect = { phys: [2, 2, 2] };
+    else effect = { phys: [2, 2, 2], ment: [1] };
+    return { roll: roll, effect: effect };
+  }
+
+  function applyAgeing(S, effect) {
+    if (!effect) return { crisis: false };
+    var i, k;
+    for (i = 0; i < (effect.phys || []).length; i++) {
+      k = PHYSICAL[i % PHYSICAL.length];
+      S.chars[k] = Math.max(0, S.chars[k] - effect.phys[i]);
+    }
+    for (i = 0; i < (effect.ment || []).length; i++) {
+      k = MENTAL[i % MENTAL.length];
+      S.chars[k] = Math.max(0, S.chars[k] - effect.ment[i]);
+    }
+    var crisis = false;
+    for (i = 0; i < CHARS.length; i++) if (S.chars[CHARS[i]] === 0) crisis = true;
+    return { crisis: crisis };
+  }
+
+  function musterOut(S, careerKey, termsServed, highestRank) {
+    var c = S.DATA.careers[careerKey];
+    var rolls = termsServed;
+    if (highestRank >= 1 && highestRank <= 2) rolls += 1;
+    else if (highestRank >= 3 && highestRank <= 4) rolls += 2;
+    else if (highestRank >= 5) rolls += 3;
+    var rankDM = highestRank >= 5 ? 1 : 0;
+    return { rolls: rolls, rankDM: rankDM, table: c.mustering_out };
+  }
+
+  function takeBenefit(S, careerKey, wantCash, rankDM) {
+    var c = S.DATA.careers[careerKey];
+    var r = S.rng.d6() + (rankDM || 0);
+    if (wantCash && S.skills['Gambler'] !== undefined) r += 1;
+    if (r > 7) r = 7;
+    if (r < 1) r = 1;
+    var row = c.mustering_out[r - 1];
+    if (wantCash) {
+      S.cashRollsUsed++;
+      S.cash += row.cash;
+      return { cash: row.cash, roll: r };
+    }
+    S.benefits.push(row.benefit);
+    S.benefitCounts[row.benefit] = (S.benefitCounts[row.benefit] || 0) + 1;
+    var cm = row.benefit.match(/^([A-Z]{3})\s*\+(\d+)$/);
+    if (cm) bumpChar(S, cm[1], parseInt(cm[2], 10), S.log);
+    if (/Ship Share/.test(row.benefit)) {
+      var n = /Two/.test(row.benefit) ? 2 : (/1D/.test(row.benefit) ? S.rng.d6() : (/2D/.test(row.benefit) ? S.rng.d2() : 1));
+      S.shipShares += n;
+    }
+    return { benefit: row.benefit, roll: r };
+  }
+
+  function pensionFor(S, careerKey, termsServed) {
+    var excluded = ['scout', 'rogue', 'prisoner', 'drifter'];
+    if (excluded.indexOf(careerKey) >= 0) return 0;
+    if (termsServed < 5) return 0;
+    if (termsServed <= 8) return 10000 + (termsServed - 5) * 2000;
+    return 16000 + (termsServed - 8) * 2000;
+  }
+
+  root.TravellerEngine = {
+    RNG: RNG, CHARS: CHARS, PHYSICAL: PHYSICAL, MENTAL: MENTAL,
+    dm: dm, parseCheck: parseCheck, applySkillEntry: applySkillEntry, bumpChar: bumpChar,
+    totalSkillLevels: totalSkillLevels, skillCap: skillCap,
+    start: start, newState: newState, rollCharacteristics: rollCharacteristics,
+    beginTerm: beginTerm, educationAvailable: educationAvailable, careerOptions: careerOptions,
+    qualify: qualify, enterCareer: enterCareer, availableSkillTables: availableSkillTables,
+    rollSkillTable: rollSkillTable, survival: survival, advancement: advancement,
+    commissionRoll: commissionRoll, commissionAllowed: commissionAllowed,
+    rankBonus: rankBonus, pickRankTrack: pickRankTrack,
+    ageingDue: ageingDue, ageingRoll: ageingRoll, applyAgeing: applyAgeing,
+    musterOut: musterOut, takeBenefit: takeBenefit, pensionFor: pensionFor,
+    findAssignment: findAssignment
+  };
+})(typeof module !== 'undefined' && module.exports ? module.exports : (typeof window !== 'undefined' ? window : this));
+
+</script>
+<script>
+/* Traveller generator -- UI driver.
+   The engine owns the rules; this file owns what the screen asks next.
+   Rendering dispatches on S.phase + S.sub (not a step index), because most of the
+   term loop is REPORTING a roll rather than asking a question. */
+(function () {
+  'use strict';
+  var E = window.TravellerEngine;
+  var main, track;
+
+  var PHASES = [
+    ['chars', 'Characteristics'], ['background', 'Background'], ['education', 'Education'],
+    ['terms', 'Careers'], ['muster', 'Mustering Out'], ['package', 'Skill Package'], ['done', 'Dossier']
+  ];
+
+  var S = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function sign(n) { return (n >= 0 ? '+' : '') + n; }
+  function cr(n) { return 'Cr' + Number(n).toLocaleString('en-GB'); }
+
+  function seed() { return (Math.floor(Math.random() * 4294967295) >>> 0) || 1; }
+
+  function fresh() {
+    S = E.start(DATA, seed());
+    S.phase = 'chars';
+    S.sub = null;
+    S.name = '';
+    S.homeworld = '';
+    S.bgPicked = [];
+    S.pkg = null;
+    S.pkgTaken = [];
+    S.musterQueue = [];
+    S.crisis = false;
+    S.pendingCareer = null;
+    S.msg = null;
+  }
+
+  // ---------------- render ----------------
+  function renderTrack() {
+    var idx = 0;
+    for (var i = 0; i < PHASES.length; i++) if (PHASES[i][0] === S.phase) idx = i;
+    track.innerHTML = PHASES.map(function (p, i) {
+      var cls = 'track-item' + (i === idx ? ' active' : (i < idx ? ' done' : ''));
+      return '<div class="' + cls + '">' + esc(p[1]) + '</div>';
+    }).join('');
+  }
+
+  function render() {
+    renderTrack();
+    var h = '';
+    if (S.phase === 'chars') h = viewChars();
+    else if (S.phase === 'background') h = viewBackground();
+    else if (S.phase === 'education') h = viewEducation();
+    else if (S.phase === 'terms') h = viewTerms();
+    else if (S.phase === 'muster') h = viewMuster();
+    else if (S.phase === 'package') h = viewPackage();
+    else h = viewDossier();
+    main.innerHTML = h + (S.phase === 'done' ? printSheet() : '');
+    window.scrollTo(0, 0);
+  }
+
+  function charsPanel() {
+    return '<div class="panel"><div class="panel-t">Characteristics</div><div class="chars">' +
+      E.CHARS.map(function (k) {
+        return '<div class="ch"><div class="ch-k">' + k + '</div><div class="ch-v">' + S.chars[k] +
+          '</div><div class="ch-dm">DM ' + sign(E.dm(S.chars[k])) + '</div></div>';
+      }).join('') + '</div></div>';
+  }
+
+  // ---- 1. characteristics ----
+  function viewChars() {
+    return '<div class="step-h">Characteristics</div>' +
+      '<div class="step-p">Roll 2D for each of the six characteristics. You are 18 years old and the universe is in front of you.</div>' +
+      charsPanel() +
+      '<div class="note">Dice Modifiers come from the score: 0 is DM-3, 6-8 is DM+0, 15 is DM+3. Your EDU DM sets how many background skills you get next.</div>' +
+      '<div class="btn-row"><button class="btn ghost" onclick="A.reroll()">&#9860; Roll again</button>' +
+      '<button class="btn" onclick="A.go(\'background\')">Continue &rarr;</button></div>';
+  }
+
+  // ---- 2. background ----
+  function viewBackground() {
+    var n = Math.max(0, E.dm(S.chars.EDU) + 3);
+    var list = DATA.core.background_skills.list;
+    return '<div class="step-h">Background</div>' +
+      '<div class="step-p">Choose <b>' + n + '</b> background skills &mdash; that is your EDU DM + 3 &mdash; each at level 0. These represent what you picked up growing up.</div>' +
+      '<div class="panel"><div class="grid2">' +
+      '<div><label class="lbl">Name</label><input class="txt" value="' + esc(S.name) + '" oninput="A.set(\'name\',this.value)" placeholder="Your Traveller"></div>' +
+      '<div><label class="lbl">Homeworld</label><input class="txt" value="' + esc(S.homeworld) + '" oninput="A.set(\'homeworld\',this.value)" placeholder="Optional"></div>' +
+      '</div></div>' +
+      '<div class="panel"><div class="panel-t">Background skills &mdash; ' + S.bgPicked.length + ' / ' + n + '</div>' +
+      '<div class="skills-list">' + list.map(function (sk) {
+        var on = S.bgPicked.indexOf(sk) >= 0;
+        var dis = !on && S.bgPicked.length >= n;
+        return '<div class="opt' + (on ? ' on' : '') + (dis ? ' disabled' : '') + '" onclick="A.bg(\'' + esc(sk) + '\')">' +
+          '<div class="opt-box">' + (on ? '&#10003;' : '') + '</div><div class="opt-n">' + esc(sk) + '</div></div>';
+      }).join('') + '</div></div>' +
+      '<div class="btn-row"><button class="btn ghost" onclick="A.go(\'chars\')">&larr; Back</button>' +
+      '<button class="btn"' + (S.bgPicked.length === n ? '' : ' disabled') + ' onclick="A.go(\'education\')">Continue &rarr;</button></div>';
+  }
+
+  // ---- 3. pre-career education ----
+  function viewEducation() {
+    var u = DATA.core.pre_career_education.university, m = DATA.core.pre_career_education.military_academy;
+    var h = '<div class="step-h">Pre-Career Education</div>' +
+      '<div class="step-p">Optional. University or a military academy takes your first term but grants skills and a leg up into certain careers. Failing entry means you must try a career immediately &mdash; and failing that, the draft.</div>';
+    if (S.education) {
+      h += '<div class="panel"><div class="panel-t">' + esc(S.education.type) + '</div>' + S.education.log.map(function (l) {
+        return '<div class="roll ' + (l.good ? 'good' : (l.bad ? 'bad' : '')) + '"><span class="roll-v">' + esc(l.v) + '</span><span class="roll-t">' + esc(l.t) + '</span></div>';
+      }).join('') + '</div>' +
+        '<div class="btn-row"><span></span><button class="btn" onclick="A.go(\'terms\')">Begin careers &rarr;</button></div>';
+      return h;
+    }
+    h += '<div class="panel"><div class="panel-t">Choose</div>' +
+      '<div class="opt" onclick="A.educate(\'university\')"><div class="opt-box"></div><div><div class="opt-n">University</div>' +
+      '<div class="opt-d">Entry ' + esc(u.entry) + '. Two skills, EDU +1, then a graduation roll of ' + esc(u.graduation) + '.</div></div></div>' +
+      '<div class="opt" onclick="A.educate(\'military_academy\')"><div class="opt-box"></div><div><div class="opt-n">Military Academy</div>' +
+      '<div class="opt-d">Entry Army END 7+, Marines END 8+, Navy INT 8+. All service skills at 0, then graduation ' + esc(m.graduation) + '.</div></div></div>' +
+      '<div class="opt" onclick="A.go(\'terms\')"><div class="opt-box"></div><div><div class="opt-n">Skip &mdash; straight to a career</div>' +
+      '<div class="opt-d">Most Travellers do exactly this.</div></div></div></div>';
+    return h;
+  }
+
+  // ---- 4. the term loop ----
+  function historyHTML() {
+    if (!S.terms.length) return '';
+    return '<div class="panel"><div class="panel-t">Career history</div><div class="hist">' +
+      S.terms.map(function (t, i) {
+        var c = DATA.careers[t.career];
+        var a = E.findAssignment(c, t.assignment);
+        var rank = t.commissioned ? ('officer ' + t.officerRank) : ('rank ' + t.rank);
+        return '<div class="hist-row"><div class="hist-t">Term ' + (i + 1) + '</div>' +
+          '<div class="hist-c"><b>' + esc(c.name) + '</b> &middot; ' + esc(a.name) +
+          (t.leftBecause ? ' <span class="hist-r">(' + esc(t.leftBecause) + ')</span>' : '') + '</div>' +
+          '<div class="hist-r">age ' + t.age + ' &middot; ' + rank + '</div></div>';
+      }).join('') + '</div></div>';
+  }
+
+  function skillsPanel() {
+    var keys = Object.keys(S.skills).sort();
+    if (!keys.length) return '';
+    return '<div class="panel"><div class="panel-t">Skills &mdash; ' + E.totalSkillLevels(S) + ' levels (cap ' + E.skillCap(S) + ')</div>' +
+      '<div class="skills-list">' + keys.map(function (k) {
+        return '<div class="sk"><span>' + esc(k) + '</span><span class="sk-v">' + S.skills[k] + '</span></div>';
+      }).join('') + '</div></div>';
+  }
+
+  function rollLine(v, t, cls) {
+    return '<div class="roll ' + (cls || '') + '"><span class="roll-v">' + esc(v) + '</span><span class="roll-t">' + esc(t) + '</span></div>';
+  }
+
+  function viewTerms() {
+    var h = '<div class="step-h">Term ' + (S.terms.length + 1) + '</div>' +
+      '<div class="step-p">Age ' + S.age + '. Each term is four years. Choose a career and roll to qualify; from there the dice decide as much as you do.</div>';
+    h += historyHTML();
+
+    if (!S.sub || S.sub === 'pick') {
+      h += '<div class="panel"><div class="panel-t">Choose a career</div>';
+      var opts = E.careerOptions(S);
+      h += opts.map(function (k) {
+        var c = DATA.careers[k];
+        return '<div class="opt' + (S.pendingCareer === k ? ' on' : '') + '" onclick="A.pickCareer(\'' + k + '\')">' +
+          '<div class="opt-box">' + (S.pendingCareer === k ? '&#10003;' : '') + '</div><div>' +
+          '<div class="opt-n">' + esc(c.name) + ' <span class="hist-r">&mdash; qualify ' + esc(c.qualification.check) + '</span></div>' +
+          '<div class="opt-d">' + esc(c.blurb) + '</div></div></div>';
+      }).join('') + '</div>';
+      if (S.pendingCareer) {
+        var c2 = DATA.careers[S.pendingCareer];
+        h += '<div class="panel"><div class="panel-t">Assignment</div>' + c2.assignments.map(function (a) {
+          return '<div class="opt" onclick="A.pickAssignment(\'' + a.key + '\')"><div class="opt-box"></div><div>' +
+            '<div class="opt-n">' + esc(a.name) + ' <span class="hist-r">survival ' + esc(a.survival) + ' &middot; advancement ' + esc(a.advancement) + '</span></div>' +
+            '<div class="opt-d">' + esc(a.desc) + '</div></div></div>';
+        }).join('') + '</div>';
+      }
+      h += skillsPanel();
+      return h;
+    }
+
+    // in-term reporting
+    h += '<div class="panel"><div class="term-hd"><div class="term-n">' +
+      esc(DATA.careers[S.current.career].name) + ' &middot; ' +
+      esc(E.findAssignment(DATA.careers[S.current.career], S.current.assignment).name) +
+      '</div><div class="term-age">age ' + S.current.age + '</div></div>';
+    h += (S.termLog || []).map(function (l) { return rollLine(l.v, l.t, l.cls); }).join('');
+    h += '</div>';
+
+    if (S.sub === 'train') {
+      var tables = E.availableSkillTables(S);
+      h += '<div class="panel"><div class="panel-t">Choose a skill table &mdash; roll 1D</div>' +
+        tables.map(function (t) {
+          return '<div class="opt" onclick="A.train(\'' + t.key + '\')"><div class="opt-box"></div><div class="opt-n">' + esc(t.label) + '</div></div>';
+        }).join('') + '</div>';
+    } else if (S.sub === 'commission') {
+      h += '<div class="panel"><div class="panel-t">Commission &mdash; ' + esc(DATA.careers[S.current.career].commission.check) + '</div>' +
+        '<div class="opt" onclick="A.commission(true)"><div class="opt-box"></div><div class="opt-n">Try for a commission</div></div>' +
+        '<div class="opt" onclick="A.commission(false)"><div class="opt-box"></div><div class="opt-n">Stay in the ranks</div></div></div>';
+    } else if (S.sub === 'continue') {
+      h += '<div class="panel"><div class="panel-t">Another term?</div>' +
+        (S.forcedStay ? '<div class="note">You rolled a natural 12 on advancement &mdash; you are too valuable to lose and must serve another term.</div>' : '') +
+        (S.mustLeave ? '<div class="note">Your advancement roll came in at or under the terms you have served. You cannot continue in this career.</div>' : '') +
+        (!S.mustLeave && !S.forcedStay ? '<div class="opt" onclick="A.another(true)"><div class="opt-box"></div><div class="opt-n">Serve another term in this career</div></div>' : '') +
+        (S.forcedStay ? '<div class="opt" onclick="A.another(true)"><div class="opt-box"></div><div class="opt-n">Serve another term (required)</div></div>' : '') +
+        (!S.forcedStay ? '<div class="opt" onclick="A.another(false)"><div class="opt-box"></div><div class="opt-n">Leave and muster out</div></div>' : '') +
+        '</div>';
+    } else if (S.sub === 'report') {
+      h += '<div class="btn-row"><span></span><button class="btn" onclick="A.advanceTerm()">Continue &rarr;</button></div>';
+    } else if (S.sub === 'ejected') {
+      h += '<div class="panel"><div class="panel-t">Out of a job</div>' +
+        '<div class="opt" onclick="A.afterEject()"><div class="opt-box"></div><div class="opt-n">Muster out and look for new work</div></div></div>';
+    }
+    h += skillsPanel();
+    return h;
+  }
+
+  // ---- 5. mustering out ----
+  function viewMuster() {
+    var q = S.musterQueue[0];
+    var h = '<div class="step-h">Mustering Out</div>';
+    if (!q) {
+      h += '<div class="step-p">Nothing left to claim.</div>' +
+        '<div class="btn-row"><span></span><button class="btn" onclick="A.go(\'package\')">Continue &rarr;</button></div>';
+      return h;
+    }
+    var c = DATA.careers[q.career];
+    h += '<div class="step-p">Leaving <b>' + esc(c.name) + '</b> after ' + q.terms + ' term' + (q.terms === 1 ? '' : 's') +
+      '. You have <b>' + q.rolls + '</b> benefit roll' + (q.rolls === 1 ? '' : 's') + ' left to place.</div>';
+    h += '<div class="panel"><div class="panel-t">Cash so far: ' + cr(S.cash) + ' &middot; cash rolls used ' + S.cashRollsUsed + ' / 3</div>' +
+      '<div class="opt' + (S.cashRollsUsed >= 3 ? ' disabled' : '') + '" onclick="A.benefit(true)"><div class="opt-box"></div><div>' +
+      '<div class="opt-n">Roll on the Cash column</div><div class="opt-d">Three cash rolls per lifetime, across every career. ' +
+      (S.skills['Gambler'] !== undefined ? 'Your Gambler skill grants DM+1.' : '') + '</div></div></div>' +
+      '<div class="opt" onclick="A.benefit(false)"><div class="opt-box"></div><div>' +
+      '<div class="opt-n">Roll on the Benefits column</div><div class="opt-d">Equipment, ship shares, characteristic increases and the like.</div></div></div></div>';
+    if (S.benefits.length) {
+      h += '<div class="panel"><div class="panel-t">Benefits taken</div><div class="skills-list">' +
+        S.benefits.map(function (b) { return '<div class="sk"><span>' + esc(b) + '</span></div>'; }).join('') + '</div></div>';
+    }
+    return h;
+  }
+
+  // ---- 6. skill package ----
+  function viewPackage() {
+    var P = DATA.packages.skill_packages;
+    var h = '<div class="step-h">Skill Package</div>' +
+      '<div class="step-p">A group chooses <b>one</b> package between them, then takes turns claiming skills from it until the list is used up.</div>' +
+      '<div class="note">This is written as a group rule and the book gives no solo split, so nothing is granted automatically. Pick the package your table agreed on, then tick the skills you claimed.</div>';
+    h += '<div class="panel"><div class="panel-t">Package</div>';
+    for (var k in P) {
+      if (k.charAt(0) === '_') continue;
+      h += '<div class="opt' + (S.pkg === k ? ' on' : '') + '" onclick="A.pkg(\'' + k + '\')">' +
+        '<div class="opt-box">' + (S.pkg === k ? '&#10003;' : '') + '</div><div>' +
+        '<div class="opt-n">' + esc(k) + '</div><div class="opt-d">' + esc(P[k].desc) + '</div></div></div>';
+    }
+    h += '</div>';
+    if (S.pkg) {
+      h += '<div class="panel"><div class="panel-t">Claim your share</div><div class="skills-list">' +
+        P[S.pkg].skills.map(function (sk, i) {
+          var on = S.pkgTaken.indexOf(i) >= 0;
+          return '<div class="opt' + (on ? ' on' : '') + '" onclick="A.pkgTake(' + i + ')">' +
+            '<div class="opt-box">' + (on ? '&#10003;' : '') + '</div><div class="opt-n">' + esc(sk) + '</div></div>';
+        }).join('') + '</div></div>';
+    }
+    h += '<div class="btn-row"><span></span><button class="btn" onclick="A.finish()">Finish &rarr;</button></div>';
+    return h;
+  }
+
+  // ---- 7. dossier ----
+  function viewDossier() {
+    var h = '<div class="step-h">' + esc(S.name || 'Unnamed Traveller') + '</div>' +
+      '<div class="step-p">Age ' + S.age + ' &middot; ' + S.terms.length + ' term' + (S.terms.length === 1 ? '' : 's') +
+      (S.homeworld ? ' &middot; ' + esc(S.homeworld) : '') + '</div>';
+    if (S.crisis) h += '<div class="note"><b>Ageing crisis.</b> A characteristic reached zero. Without 1D &times; Cr10000 of medical care the Traveller dies; survivors automatically fail every qualification roll from here on.</div>';
+    h += charsPanel() + historyHTML() + skillsPanel();
+    h += '<div class="panel"><div class="panel-t">Finances &amp; benefits</div>' +
+      '<div class="grid2"><div><div class="sk"><span>Cash</span><span class="sk-v">' + cr(S.cash) + '</span></div>' +
+      '<div class="sk"><span>Ship shares</span><span class="sk-v">' + S.shipShares + '</span></div></div>' +
+      '<div><div class="sk"><span>Pension</span><span class="sk-v">' + cr(S.pension) + '/yr</span></div>' +
+      '<div class="sk"><span>Debt</span><span class="sk-v">' + cr(S.debt) + '</span></div></div></div>' +
+      (S.benefits.length ? '<div class="skills-list" style="margin-top:10px">' + S.benefits.map(function (b) {
+        return '<div class="sk"><span>' + esc(b) + '</span></div>';
+      }).join('') + '</div>' : '') + '</div>';
+    h += '<div class="btn-row"><button class="btn ghost" onclick="A.restart()">Start over</button>' +
+      '<button class="btn" onclick="window.print()">Print sheet</button></div>';
+    return h;
+  }
+
+  // ---- printed sheet (CSS recreation; no publisher artwork) ----
+  function printSheet() {
+    var skills = Object.keys(S.skills).sort();
+    var h = '<div id="printsheet"><div class="ps">';
+    h += '<div class="ps-top"><div class="ps-title">Traveller</div><div class="ps-sub">CHARACTER RECORD</div></div>';
+    h += '<div class="ps-box"><div class="ps-2">' +
+      '<div>' + f('Name', S.name) + f('Homeworld', S.homeworld) + f('Species', 'Human') + '</div>' +
+      '<div>' + f('Age', S.age) + f('Terms', S.terms.length) + f('Pension', S.pension ? cr(S.pension) + '/yr' : '') + '</div>' +
+      '</div></div>';
+    h += '<div class="ps-band">Characteristics</div><div class="ps-box"><div class="ps-ch">' +
+      E.CHARS.concat(['PSI']).map(function (k) {
+        var v = k === 'PSI' ? '' : S.chars[k];
+        var d = k === 'PSI' ? '' : 'DM ' + sign(E.dm(S.chars[k]));
+        return '<div><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="d">' + d + '</div></div>';
+      }).join('') + '</div></div>';
+    h += '<div class="ps-band">Skills</div><div class="ps-box"><div class="ps-sk">' +
+      (skills.length ? skills.map(function (k) {
+        return '<div><span>' + esc(k) + '</span><span>' + S.skills[k] + '</span></div>';
+      }).join('') : '<div>&mdash;</div>') + '</div></div>';
+    h += '<div class="ps-band">Career history</div><div class="ps-box"><table class="ps-hist">' +
+      '<tr><th>Term</th><th>Career</th><th>Assignment</th><th>Rank</th><th>Left</th></tr>' +
+      S.terms.map(function (t, i) {
+        var c = DATA.careers[t.career];
+        return '<tr><td>' + (i + 1) + '</td><td>' + esc(c.name) + '</td><td>' +
+          esc(E.findAssignment(c, t.assignment).name) + '</td><td>' +
+          (t.commissioned ? 'Officer ' + t.officerRank : t.rank) + '</td><td>' + esc(t.leftBecause || '') + '</td></tr>';
+      }).join('') + '</table></div>';
+    h += '<div class="ps-band">Benefits &amp; finances</div><div class="ps-box"><div class="ps-2"><div>' +
+      f('Cash', cr(S.cash)) + f('Ship shares', S.shipShares) + '</div><div>' +
+      f('Debt', cr(S.debt)) + f('Benefits', S.benefits.join(', ')) + '</div></div></div>';
+    h += '<div class="ps-foot">Traveller is a registered trade mark of Mongoose Publishing Ltd. ' +
+      'This is an unofficial, fan-made character generator, not affiliated with or endorsed by the rights holders. ' +
+      'All game rules and content remain the property of their respective owners.</div>';
+    h += '</div></div>';
+    return h;
+  }
+  function f(label, val) {
+    return '<div class="ps-f"><div class="ps-fl">' + esc(label) + '</div><div class="ps-fv">' + esc(val) + '</div></div>';
+  }
+
+  // ---------------- actions ----------------
+  var A = {};
+  A.set = function (k, v) { S[k] = v; };
+  A.reroll = function () { E.rollCharacteristics(S); S.bgPicked = []; render(); };
+  A.go = function (p) {
+    if (p === 'terms' && !S.sub) S.sub = 'pick';
+    S.phase = p; render();
+  };
+  A.bg = function (sk) {
+    var n = Math.max(0, E.dm(S.chars.EDU) + 3);
+    var i = S.bgPicked.indexOf(sk);
+    if (i >= 0) { S.bgPicked.splice(i, 1); delete S.skills[sk]; }
+    else if (S.bgPicked.length < n) { S.bgPicked.push(sk); S.skills[sk] = 0; }
+    render();
+  };
+
+  A.educate = function (kind) {
+    var log = [];
+    var d = DATA.core.pre_career_education[kind];
+    var ok;
+    if (kind === 'university') {
+      var chk = E.parseCheck(d.entry);
+      var mod = (S.chars.SOC >= 9 ? 1 : 0);
+      var r = S.rng.d2(), tot = r + E.dm(S.chars[chk.chars[0]]) + mod;
+      ok = tot >= chk.target;
+      log.push({ v: tot, t: 'Entry (' + d.entry + '): ' + (ok ? 'accepted' : 'rejected'), good: ok, bad: !ok });
+      if (ok) {
+        E.bumpChar(S, 'EDU', 1, S.log);
+        E.applySkillEntry(S, d.skill_list[Math.floor(S.rng.next() * d.skill_list.length)] + ' 1', S.log);
+        var g = S.rng.d2(), gtot = g + E.dm(S.chars.INT);
+        var grad = gtot >= 6, hon = gtot >= 10;
+        log.push({ v: gtot, t: 'Graduation (INT 6+): ' + (hon ? 'with honours' : (grad ? 'graduated' : 'failed')), good: grad, bad: !grad });
+        if (grad) { E.bumpChar(S, 'EDU', 1, S.log); }
+      }
+    } else {
+      var svc = ['Army', 'Marines', 'Navy'][Math.floor(S.rng.next() * 3)];
+      var ent = d.entry[svc] || d.entry.Army;
+      var c2 = E.parseCheck(ent);
+      var r2 = S.rng.d2(), t2 = r2 + E.dm(S.chars[c2.chars[0]]);
+      ok = t2 >= c2.target;
+      log.push({ v: t2, t: svc + ' academy entry (' + ent + '): ' + (ok ? 'accepted' : 'rejected'), good: ok, bad: !ok });
+      if (ok) {
+        var g2 = S.rng.d2() + E.dm(S.chars.INT) + (S.chars.END >= 8 ? 1 : 0) + (S.chars.SOC >= 8 ? 1 : 0);
+        var grad2 = g2 >= 7, hon2 = g2 >= 11;
+        log.push({ v: g2, t: 'Graduation (INT 7+): ' + (hon2 ? 'with honours' : (grad2 ? 'graduated' : 'failed')), good: grad2, bad: !grad2 });
+        if (grad2) { E.bumpChar(S, 'EDU', 1, S.log); if (hon2) E.bumpChar(S, 'SOC', 1, S.log); }
+      }
+    }
+    var ev = S.rng.d2();
+    log.push({ v: ev, t: 'Pre-career event ' + ev + ': ' + DATA.core.pre_career_education.pre_career_events[ev - 2].text });
+    S.education = { type: kind === 'university' ? 'University' : 'Military Academy', entered: ok, log: log };
+    S.age += 4;
+    render();
+  };
+
+  A.pickCareer = function (k) { S.pendingCareer = k; render(); };
+
+  A.pickAssignment = function (a) {
+    var k = S.pendingCareer;
+    S.termLog = [];
+    var q = E.qualify(S, k, a);
+    if (q.auto) S.termLog.push({ v: '--', t: 'Qualification: automatic', cls: 'good' });
+    else S.termLog.push({ v: q.total, t: 'Qualification ' + DATA.careers[k].qualification.check + ': ' + (q.ok ? 'accepted' : 'rejected'), cls: q.ok ? 'good' : 'bad' });
+    if (!q.ok) {
+      if (!S.draftUsed) {
+        S.draftUsed = true;
+        var row = DATA.loop.draft.table[S.rng.d6() - 1];
+        var dk = row.career.toLowerCase();
+        if (!DATA.careers[dk]) dk = 'drifter';
+        k = dk; a = DATA.careers[k].assignments[0].key;
+        S.termLog.push({ v: '&#9860;', t: 'Drafted into ' + DATA.careers[k].name, cls: 'bad' });
+      } else {
+        k = 'drifter'; a = DATA.careers[k].assignments[0].key;
+        S.termLog.push({ v: '--', t: 'No berth anywhere. You drift.', cls: 'bad' });
+      }
+    }
+    E.enterCareer(S, k, a);
+    S.pendingCareer = null;
+    S.sub = 'train';
+    render();
+  };
+
+  A.train = function (tableKey) {
+    var r = E.rollSkillTable(S, tableKey);
+    S.termLog.push({ v: r.roll, t: 'Training: ' + r.entry });
+    // survival
+    var sv = E.survival(S);
+    S.termLog.push({ v: sv.total, t: 'Survival ' + sv.check + ': ' + (sv.ok ? 'survived' : (sv.roll === 2 ? 'natural 2 -- automatic failure' : 'failed')), cls: sv.ok ? 'good' : 'bad' });
+    if (!sv.ok) {
+      var c = DATA.careers[S.current.career];
+      var mr = S.rng.d6();
+      var text = c.mishaps[mr - 1].text;
+      S.termLog.push({ v: mr, t: 'Mishap: ' + text, cls: 'bad' });
+      var stays = /do(es)? NOT cause you to leave|you do NOT have to leave|NOT ejected/i.test(text);
+      S.benefitRolls -= 0; // the term's benefit roll is lost -- accounted for at muster
+      S.current.lostBenefit = true;
+      if (!stays) { S.current.leftBecause = 'mishap'; S.sub = 'ejected'; render(); return; }
+    } else {
+      var ev = S.rng.d2();
+      S.termLog.push({ v: ev, t: 'Event: ' + DATA.careers[S.current.career].events[ev - 2].text });
+    }
+    S.sub = E.commissionAllowed(S) ? 'commission' : 'advance';
+    if (S.sub === 'advance') doAdvance();
+    render();
+  };
+
+  A.commission = function (tryIt) {
+    if (tryIt) {
+      var cm = E.commissionRoll(S);
+      S.termLog.push({ v: cm.total, t: 'Commission ' + DATA.careers[S.current.career].commission.check +
+        (cm.dm ? ' (DM' + sign(cm.dm) + ')' : '') + ': ' + (cm.ok ? 'commissioned' : 'refused'), cls: cm.ok ? 'good' : 'bad' });
+      if (cm.ok) {
+        S.current.commissioned = true; S.current.officerRank = 1;
+        var rb = E.rankBonus(S);
+        if (rb && rb.bonus) S.termLog.push({ v: '&#9733;', t: 'Rank bonus: ' + rb.bonus, cls: 'good' });
+        S.sub = 'continue'; S.mustLeave = false; S.forcedStay = false;
+        render(); return;
+      }
+    } else {
+      S.termLog.push({ v: '--', t: 'Commission not attempted' });
+    }
+    doAdvance(); render();
+  };
+
+  function doAdvance() {
+    var ad = E.advancement(S);
+    S.termLog.push({ v: ad.total, t: 'Advancement ' + ad.check + ': ' + (ad.ok ? 'promoted' : 'passed over'), cls: ad.ok ? 'good' : '' });
+    if (ad.ok) {
+      if (S.current.commissioned) S.current.officerRank = Math.min(6, S.current.officerRank + 1);
+      else S.current.rank = Math.min(6, S.current.rank + 1);
+      var rb = E.rankBonus(S);
+      if (rb && rb.bonus) S.termLog.push({ v: '&#9733;', t: 'Rank bonus: ' + rb.bonus, cls: 'good' });
+      var extra = E.rollSkillTable(S, E.availableSkillTables(S)[0].key);
+      S.termLog.push({ v: extra.roll, t: 'Extra training from promotion: ' + extra.entry, cls: 'good' });
+    }
+    if (ad.mustStay) S.termLog.push({ v: 12, t: 'A natural 12 -- you are too valuable to lose and must serve again', cls: 'good' });
+    if (ad.mustLeave) S.termLog.push({ v: ad.total, t: 'At or under your terms served -- you cannot continue here', cls: 'bad' });
+    S.mustLeave = ad.mustLeave; S.forcedStay = ad.mustStay;
+    S.sub = 'continue';
+  }
+
+  function closeTerm(leftBecause) {
+    S.age += 4;
+    S.current.leftBecause = leftBecause || S.current.leftBecause;
+    S.terms.push(S.current);
+    var closed = S.current;
+    S.current = null;
+    if (E.ageingDue(S)) {
+      var ag = E.ageingRoll(S);
+      var res = E.applyAgeing(S, ag.effect);
+      S.termLog.push({ v: ag.roll, t: 'Ageing (2D - ' + S.terms.length + ' terms): ' + (ag.effect ? 'characteristics reduced' : 'no effect'), cls: ag.effect ? 'bad' : 'good' });
+      if (res.crisis) S.crisis = true;
+    }
+    return closed;
+  }
+
+  A.another = function (yes) {
+    var closed = closeTerm(yes ? null : 'left');
+    if (yes) {
+      S.current = {
+        career: closed.career, assignment: closed.assignment,
+        rank: closed.rank, commissioned: closed.commissioned, officerRank: closed.officerRank,
+        termNo: S.terms.length + 1, age: S.age, skillRolls: [], events: [], leftBecause: null
+      };
+      S.careerTermCount[closed.career]++;
+      S.termLog = [];
+      S.sub = 'train';
+    } else {
+      queueMuster(closed);
+      S.sub = 'pick';
+      S.phase = 'muster';
+    }
+    render();
+  };
+
+  A.afterEject = function () {
+    var closed = closeTerm('mishap');
+    queueMuster(closed);
+    S.sub = 'pick';
+    S.phase = 'muster';
+    render();
+  };
+
+  function queueMuster(closed) {
+    var served = S.careerTermCount[closed.career];
+    var high = Math.max(closed.rank, closed.officerRank);
+    var mo = E.musterOut(S, closed.career, served, high);
+    var rolls = mo.rolls - (closed.lostBenefit ? 1 : 0);
+    S.pension += E.pensionFor(S, closed.career, served);
+    if (rolls > 0) S.musterQueue.push({ career: closed.career, terms: served, rolls: rolls, rankDM: mo.rankDM });
+  }
+
+  A.benefit = function (wantCash) {
+    var q = S.musterQueue[0];
+    if (!q) return;
+    if (wantCash && S.cashRollsUsed >= 3) return;
+    E.takeBenefit(S, q.career, wantCash, q.rankDM);
+    q.rolls--;
+    if (q.rolls <= 0) S.musterQueue.shift();
+    if (!S.musterQueue.length) {
+      // back to the loop unless the player is done
+      S.phase = 'terms'; S.sub = 'pick';
+    }
+    render();
+  };
+
+  A.pkg = function (k) { S.pkg = k; S.pkgTaken = []; render(); };
+  A.pkgTake = function (i) {
+    var idx = S.pkgTaken.indexOf(i);
+    var sk = DATA.packages.skill_packages[S.pkg].skills[i];
+    if (idx >= 0) { S.pkgTaken.splice(idx, 1); }
+    else { S.pkgTaken.push(i); E.applySkillEntry(S, sk, S.log); }
+    render();
+  };
+  A.finish = function () { S.phase = 'done'; render(); };
+  A.restart = function () { fresh(); render(); };
+
+  A.randomise = function () {
+    fresh();
+    var n = Math.max(0, E.dm(S.chars.EDU) + 3);
+    var pool = DATA.core.background_skills.list.slice();
+    for (var i = 0; i < n; i++) {
+      var p = pool.splice(Math.floor(S.rng.next() * pool.length), 1)[0];
+      S.bgPicked.push(p); S.skills[p] = 0;
+    }
+    S.name = 'Traveller';
+    // play 2-4 terms automatically
+    var want = 2 + Math.floor(S.rng.next() * 3);
+    var guard = 0;
+    while (S.terms.length < want && guard++ < 40) {
+      var keys = E.careerOptions(S);
+      var k = keys[Math.floor(S.rng.next() * keys.length)];
+      var a = DATA.careers[k].assignments[Math.floor(S.rng.next() * 3)].key;
+      S.pendingCareer = k;
+      A.pickAssignment(a);
+      if (S.sub === 'ejected') { A.afterEject(); flushMuster(); continue; }
+      A.train(E.availableSkillTables(S)[Math.floor(S.rng.next() * E.availableSkillTables(S).length)].key);
+      if (S.sub === 'ejected') { A.afterEject(); flushMuster(); continue; }
+      if (S.sub === 'commission') A.commission(S.rng.next() < 0.5);
+      A.another(S.terms.length + 1 < want && !S.mustLeave);
+      flushMuster();
+    }
+    flushMuster();
+    S.phase = 'done';
+    render();
+  };
+  function flushMuster() {
+    var guard = 0;
+    while (S.musterQueue.length && guard++ < 60) A.benefit(S.cashRollsUsed < 3 && S.rng.next() < 0.4);
+  }
+
+  window.A = A;
+
+  // theme
+  window.setTheme = function (t) {
+    if (t === 'light') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('traveller_theme', t); } catch (e) {}
+    syncTheme();
+  };
+  function syncTheme() {
+    var t = document.documentElement.getAttribute('data-theme') || 'light';
+    var b = document.querySelectorAll('.tt-btn');
+    for (var i = 0; i < b.length; i++) b[i].classList.toggle('active', b[i].getAttribute('data-tv') === t);
+  }
+
+  window.addEventListener('DOMContentLoaded', function () {
+    main = document.getElementById('main');
+    track = document.getElementById('track');
+    fresh();
+    render();
+    syncTheme();
+  });
+})();
+
+</script>
+</body></html>
