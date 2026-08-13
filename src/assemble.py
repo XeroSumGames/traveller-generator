@@ -38,8 +38,21 @@ HTML = """<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Traveller -- Character Generator</title>
-<meta name="description" content="An unofficial character generator for Mongoose Traveller 2nd Edition.">
+<title>Traveller Character Generator (Mongoose 2nd Edition) | Xero Sum Games</title>
+<link rel="canonical" href="https://thetable.xerosumgames.com/traveller-generator">
+<meta name="description" content="Free Mongoose Traveller 2nd Edition character generator. Roll characteristics, run the full career lifepath term by term, muster out, and print a character sheet. Runs in your browser, no signup.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Xero Sum Games">
+<meta property="og:title" content="Traveller Character Generator (Mongoose 2nd Edition)">
+<meta property="og:description" content="Free Mongoose Traveller 2nd Edition character generator. Roll characteristics, run the full career lifepath term by term, muster out, and print a character sheet. Runs in your browser, no signup.">
+<meta property="og:url" content="https://thetable.xerosumgames.com/traveller-generator">
+<meta property="og:image" content="https://thetable.xerosumgames.com/gen-traveller-generator.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Traveller Character Generator (Mongoose 2nd Edition)">
+<meta name="twitter:description" content="Free Mongoose Traveller 2nd Edition character generator. Roll characteristics, run the full career lifepath term by term, muster out, and print a character sheet. Runs in your browser, no signup.">
+<meta name="twitter:image" content="https://thetable.xerosumgames.com/gen-traveller-generator.jpg">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Traveller Character Generator (Mongoose 2nd Edition)","url":"https://thetable.xerosumgames.com/traveller-generator","applicationCategory":"GameApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free Mongoose Traveller 2nd Edition character generator. Roll characteristics, run the full career lifepath term by term, muster out, and print a character sheet. Runs in your browser, no signup."}</script>
+
 <style>
 %CSS%
 </style>
@@ -51,7 +64,7 @@ HTML = """<!doctype html>
     <button class="tt-btn" data-tv="light" onclick="setTheme('light')">Light</button>
     <button class="tt-btn" data-tv="dark" onclick="setTheme('dark')">Dark</button>
   </div>
-  <div class="hdr-title">Traveller</div>
+  <h1 class="hdr-title">Traveller</h1>
   <div class="hdr-sub">Character Generator &middot; Mongoose 2nd Edition</div>
   <button class="hdr-rand no-print" type="button" onclick="A.randomise()">&#9860; Randomise</button>
 </div>
@@ -60,6 +73,8 @@ HTML = """<!doctype html>
   <div id="main"></div>
 </div>
 <div class="footer no-print" style="text-align:center;padding:26px 16px;font-size:12px;color:#8d897c;line-height:1.6">
+  <p class="seo-intro">A free, browser-based character generator for Mongoose Traveller 2nd Edition. It runs the complete lifepath: characteristics, background skills, optional university or military academy, then career terms with qualification, survival, events, commission and advancement, ageing, and mustering out.</p>
+
   <b>Traveller -- Character Generator.</b> An unofficial fan tool.<br>
   Traveller is a registered trade mark of Mongoose Publishing Ltd. Traveller (c)2024 Mongoose Publishing Ltd.
   This is an unofficial, fan-made character generator, not affiliated with or endorsed by the rights holders.
