@@ -65,6 +65,7 @@
                      "Astrogation", "Electronics (any)", "Engineer (any)", "Language (any)",
                      "Medic", "Navigation", "Profession (any)", "Science (any)"],
       "edu_bonus_on_entry": 1,
+      "_edu_total_note": "EDU rises by +2 in total: +1 on entry, +1 more on graduation. Xero's 'MGT2 Character Creation Tips' article says '+1 EDU if you get in, a total of +3 if you graduate'. That is WRONG -- printed p16 reads 'Increase EDU by +1' on entry and 'Increase EDU by an additional +1' under Graduation Benefits, and there is no third increase anywhere on the page. Verified against the page image, not just my own transcription. The book wins.",
       "graduation": "INT 6+",
       "honours": "10+",
       "graduation_benefits": [
